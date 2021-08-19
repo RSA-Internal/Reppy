@@ -67,6 +67,10 @@ export default model<IGuildData>(
 	new Schema({
 		guildId: { type: String, index: true, required: true },
 		validChannels: { type: [String], default: [] },
-		userData: { type: [{ userId: String, reputation: [{ channelId: String, reputation: Number }] }], index: true, default: [] },
+		userData: {
+			type: [{ userId: String, reputation: [{ channelId: String, reputation: Number }] }],
+			index: true,
+			default: [],
+		},
 	})
 );
