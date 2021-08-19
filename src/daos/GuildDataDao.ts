@@ -110,7 +110,7 @@ export function fetchGuildData(): void {
  * and MongoDB. This will reduce the amount of DB constructive
  * calls outside of DB related locations.
  */
- export function fetchUserData(): void {
+export function fetchUserData(): void {
 	console.log("NYI - Fetch User Data");
 }
 
