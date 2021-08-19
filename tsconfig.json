@@ -1,0 +1,16 @@
+{
+	"compilerOptions": {
+		"incremental": true,
+		"target": "ES6",
+		"module": "CommonJS",
+		"outDir": "dist/",
+		"downlevelIteration": true,
+		"resolveJsonModule": true,
+		"strict": true,
+		"typeRoots": ["node_modules/@types"],
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"importsNotUsedAsValues": "error"
+	}
+}
