@@ -1,11 +1,3 @@
-# RSA TypeScript Bot Template
+# Reputation based QA System
 
-This template will provide a base for creating a Discord bot with discord.js.
-
-To get started, create a file `token.json`, with the following content:
-
-```json
-{
-	"token":"insertTokenHere"
-}
-```
+Read about it [here](https://github.com/RSA-Bots/docs/blob/master/QA%20Bot/proposal.md)
