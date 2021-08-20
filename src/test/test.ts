@@ -68,9 +68,11 @@ function verify(
 	return isPassing;
 }
 
-function resetDB(): void {
-	deleteGuildData("165202235226062848").catch(console.error.bind(console));
-	deleteGuildData("848412523526488114").catch(console.error.bind(console));
+async function resetDB(): Promise<void> {
+	console.log("Resetting DB");
+	await deleteGuildData("165202235226062848");
+	await deleteGuildData("848412523526488114");
+	console.log("Reset DB");
 }
 
 async function main(): Promise<void> {
@@ -142,7 +144,7 @@ async function main(): Promise<void> {
 	console.log(`PASSED: ${passed}`);
 	console.log(`FAILED: ${failed}`);
 
-	resetDB();
+	await resetDB();
 
 	process.exit();
 }
