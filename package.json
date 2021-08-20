@@ -1,6 +1,6 @@
 {
 	"name": "reppy",
-	"version": "0.0.8",
+	"version": "0.0.9",
 	"description": "",
 	"main": "index.js",
 	"scripts": {
@@ -14,7 +14,6 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
-		"@types/mongoose": "^5.11.97",
 		"@types/node": "^15.14.8",
 		"discord.js": "^13.1.0",
 		"mongoose": "^5.13.7",
