@@ -48,16 +48,16 @@ import { model, Schema } from "mongoose";
 
 export interface IGuildData extends Document {
 	readonly guildId: Snowflake;
-	readonly validChannels: readonly string[];
-	readonly userData: readonly IUserData[];
+	validChannels: readonly string[];
+	userData: IUserData[];
 }
 
-export interface IUserData extends Document {
+export interface IUserData {
 	readonly userId: Snowflake;
 	readonly reputation: readonly IChannelData[];
 }
 
-export interface IChannelData extends Document {
+export interface IChannelData {
 	readonly channelId: Snowflake;
 	readonly reputation: number;
 }
