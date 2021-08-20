@@ -1,13 +1,14 @@
 import { ApplicationCommandData, ApplicationCommandPermissionData, Client, Intents, Permissions } from "discord.js";
 import { readFileSync } from "fs";
 import { connect } from "mongoose";
+import { createGuildData } from "./daos/GuildDataDAO";
 import {
 	contextAcceptAnswer,
 	contextConvertToAnswer,
 	contextConvertToQuestion,
 	contextFlag,
 } from "./interactions/contextMenus";
-import { slashCommandUpdate } from "./interactions/slashCommands";
+import { slashCommandUpdate, slashCommandView } from "./interactions/slashCommands";
 
 function main(client: Client, dbUri: string) {
 	client.once("ready", () => {
@@ -17,19 +18,6 @@ function main(client: Client, dbUri: string) {
 		const context_convert_to_question = { name: "Convert to Question", type: 3 };
 		const context_accept_answer = { name: "Accept Answer", type: 3 };
 		const context_flag = { name: "Flag", type: 3 };
-
-		/**
-		 * Slash command impl for add / remove channels
-		 *
-		 * update [channelIds]
-		 *
-		 * If the DB contains the ID, remove it
-		 * If the DB does not contain the ID, add it
-		 *
-		 * Permission: MANAGE_GUILD
-		 *
-		 * Permission Check: Iterate each Role, check if has MANAGE_GUILD and add to permission list
-		 */
 
 		const slash_command_update: ApplicationCommandData = {
 			name: "update",
@@ -65,12 +53,18 @@ function main(client: Client, dbUri: string) {
 			defaultPermission: false,
 		};
 
+		const slash_command_view: ApplicationCommandData = {
+			name: "view",
+			description: "View valid channels in mentioned format.",
+		};
+
 		const command_application_payload = [
 			context_convert_to_answer,
 			context_convert_to_question,
 			context_accept_answer,
 			context_flag,
 			slash_command_update,
+			slash_command_view,
 		];
 
 		client.guilds
@@ -157,10 +151,12 @@ function main(client: Client, dbUri: string) {
 		// check if message is in valid channel for guild
 	});
 
-	client.on("interactionCreate", interaction => {
+	client.on("interactionCreate", async interaction => {
 		if (interaction.isCommand()) {
 			if (interaction.commandName === "update") {
-				slashCommandUpdate(interaction);
+				await slashCommandUpdate(interaction);
+			} else if (interaction.commandName === "view") {
+				await slashCommandView(interaction);
 			} else {
 				interaction
 					.reply({ ephemeral: true, content: "Invalid interactionData received." })
@@ -181,6 +177,10 @@ function main(client: Client, dbUri: string) {
 					.catch(console.error.bind(console));
 			}
 		}
+	});
+
+	client.on("guildCreate", guild => {
+		createGuildData(guild.id).catch(console.warn.bind(console));
 	});
 
 	// Connect to the database.
