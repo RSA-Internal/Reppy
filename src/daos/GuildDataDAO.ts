@@ -1,12 +1,3 @@
-/* eslint-disable no-mixed-spaces-and-tabs */
-/**
-	Required Methods
-
-	- Create Data
-	- Fetch Data
-	- Update Data
- */
-
 import type { Snowflake } from "discord.js";
 import guildDataModel, { IChannelData, IGuildData, IUserData } from "../models/guildData.model";
 
