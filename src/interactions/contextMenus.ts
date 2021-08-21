@@ -189,5 +189,56 @@ export async function contextAcceptAnswer(interaction: ContextMenuInteraction): 
 }
 
 export async function contextFlag(interaction: ContextMenuInteraction): Promise<void> {
-	await interaction.reply({ ephemeral: true, content: "NYI - contextFlag" });
+	await interaction.deferReply({ ephemeral: true });
+
+	const guild = interaction.guild;
+
+	if (guild) {
+		const fetchResult = await fetchGuildData(guild.id);
+		const guildData = fetchResult.guildData;
+
+		if (guildData) {
+			const message = interaction.options["_hoistedOptions"][0].message as Message;
+			const reportChannelId = guildData.reportChannelId;
+
+			if (!message.channel.isThread()) {
+				await interaction.editReply("Cannot flag this message.");
+				return;
+			}
+
+			if (reportChannelId) {
+				const reportChannel = await guild.channels.fetch(reportChannelId);
+
+				if (reportChannel && reportChannel.isText()) {
+					await reportChannel.send({
+						embeds: [
+							new MessageEmbed()
+								.setTitle("Flagged Content")
+								.setDescription(
+									`Flagged by ${(await guild.members.fetch(interaction.user.id)).displayName}`
+								)
+								.addField("Thread", `<#${message.channel.id}>`, false)
+								.addField("Jump Link", message.url, false),
+						],
+					});
+
+					await interaction.editReply("Successfully flagged message.");
+				} else {
+					await interaction.editReply(
+						"This guild does not have a valid report channel. Please tell someone to update it."
+					);
+				}
+			} else {
+				await interaction.editReply(
+					"This guild does not have a report channel. Please tell someone to set it."
+				);
+			}
+		} else {
+			await interaction.editReply(fetchResult.message);
+		}
+	} else {
+		await interaction.editReply("Failed to fetch guildId from interaction.");
+	}
+
+	return;
 }

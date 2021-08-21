@@ -13,7 +13,11 @@ export interface IDAOResult {
  * and MongoDB. This will reduce the amount of DB constructive
  * calls outside of DB related locations.
  */
-export async function createGuildData(guildId: Snowflake, validChannels?: string[]): Promise<IDAOResult> {
+export async function createGuildData(
+	guildId: Snowflake,
+	validChannels?: string[],
+	reportChannelId?: string
+): Promise<IDAOResult> {
 	return new Promise<IDAOResult>(resolve => {
 		guildDataModel
 			.findOne({ guildId })
@@ -25,6 +29,7 @@ export async function createGuildData(guildId: Snowflake, validChannels?: string
 						.create({
 							guildId,
 							validChannels: validChannels ?? [],
+							reportChannelId: reportChannelId ?? "",
 						})
 						.then(guildData => {
 							if (guildData) {
@@ -169,17 +174,31 @@ export async function fetchUserData(guildId: Snowflake, userId: Snowflake): Prom
  * and MongoDB. This will reduce the amount of DB constructive
  * calls outside of DB related locations.
  */
-export async function updateGuildData(guildId: Snowflake, validChannels: string[]): Promise<IDAOResult> {
+export async function updateGuildData(
+	guildId: Snowflake,
+	validChannels?: string[],
+	reportChannelId?: string
+): Promise<IDAOResult> {
 	return new Promise(resolve => {
 		fetchGuildData(guildId)
 			.then(res => {
 				const guildData = res.guildData;
 
 				if (guildData) {
-					guildData.validChannels = validChannels;
+					let updateQuery = {};
+
+					if (validChannels != undefined) {
+						guildData.validChannels = validChannels;
+
+						updateQuery = { validChannels: validChannels };
+					} else if (reportChannelId != undefined) {
+						guildData.reportChannelId = reportChannelId;
+
+						updateQuery = { reportChannelId: reportChannelId };
+					}
 
 					guildDataModel
-						.updateOne({ guildId }, { validChannels })
+						.updateOne({ guildId }, updateQuery)
 						.then(res => {
 							if (res.n === 0) {
 								resolve({ result: false, message: "No guildData exists." });

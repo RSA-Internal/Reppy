@@ -107,10 +107,16 @@ async function main(): Promise<void> {
 	verify("fetchUserDataNoExist", res10, false, "No userData exists.", true, false);
 
 	const res11 = await updateGuildData("848412523526488114", []);
-	verify("updateGuildData", res11, true, "Successfully updated guildData.", true, false);
+	verify("updateGuildDataValidChannels", res11, true, "Successfully updated guildData.", true, false);
 
 	const res12 = await updateGuildData("-1", []);
-	verify("updateGuildDataNoExist", res12, false, "No guildData exists.", false, false);
+	verify("updateGuildDataValidChannelsNoExist", res12, false, "No guildData exists.", false, false);
+
+	const res22 = await updateGuildData("848412523526488114", undefined, "12345");
+	verify("updateGuildDataReportChannel", res22, true, "Successfully updated guildData.", true, false);
+
+	const res23 = await updateGuildData("-1", undefined, undefined);
+	verify("updateGuildDataReportChannelNoExist", res23, false, "No guildData exists.", false, false);
 
 	const res13 = await updateUserData("848412523526488114", "454873852254617601", "871596364327448617", 4);
 	verify("updateUserData", res13, true, "Successfully updated userData.", true, true);
