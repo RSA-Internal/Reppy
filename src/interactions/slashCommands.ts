@@ -5,7 +5,7 @@ import {
 	GuildChannel,
 	MessageEmbed,
 	MessagePayload,
-	WebhookEditMessageOptions
+	WebhookEditMessageOptions,
 } from "discord.js";
 import { updateGuildData } from "../daos/GuildDataDAO";
 import type { IGuildData } from "../models/guildData.model";
@@ -52,13 +52,15 @@ export async function slashCommandUpdate(
 			}
 		});
 
-		updateGuildData(guild.id, newValidChannels).then(result => {
-			if (result.result) {
-				return resolve(`Successfully updated guildData.`);
-			} else {
-				return resolve(result.message);
-			}
-		}).catch((err: Error) => resolve(err.message));
+		updateGuildData(guild.id, newValidChannels)
+			.then(result => {
+				if (result.result) {
+					return resolve(`Successfully updated guildData.`);
+				} else {
+					return resolve(result.message);
+				}
+			})
+			.catch((err: Error) => resolve(err.message));
 	});
 }
 
