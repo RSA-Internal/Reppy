@@ -1,55 +1,11 @@
-/**
-	 	Data points - Per Guild
-
-		User Reputation
-		Valid Channels
-
-		guildData [
-			{
-				guildId: "-1",
-				validChannels: {
-					"1234",
-					"5678"
-				},
-				userData: [
-					{
-						userId: "169208961533345792",
-						reputation: [
-							{
-								"channelId": "1234",
-								"reputation": 345
-							},
-							{
-								"channelId": 5678",
-								"reputation": 12
-							}
-						]
-					},
-					{
-						userId: "454873852254617601",
-						reputation: [
-							{
-								"channelId": "1234",
-								"reputation": 345
-							},
-							{
-								"channelId": 5678",
-								"reputation": 12
-							}
-						]
-					}
-				]
-			}
-		]
-	 */
-
 import type { Snowflake } from "discord.js";
 import { model, Schema } from "mongoose";
 
 export interface IGuildData extends Document {
 	readonly guildId: Snowflake;
-	validChannels: readonly string[];
+	validChannels: string[];
 	userData: IUserData[];
+	reportChannelId: Snowflake;
 }
 
 export interface IUserData {
@@ -72,5 +28,6 @@ export default model<IGuildData>(
 			index: true,
 			default: [],
 		},
+		reportChannelId: { type: String, default: "" },
 	})
 );

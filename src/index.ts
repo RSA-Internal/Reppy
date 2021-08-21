@@ -8,7 +8,7 @@ import {
 	contextConvertToQuestion,
 	contextFlag,
 } from "./interactions/contextMenus";
-import { slashCommandUpdate, slashCommandView } from "./interactions/slashCommands";
+import { slashCommandSet, slashCommandUpdate, slashCommandView } from "./interactions/slashCommands";
 
 function main(client: Client, dbUri: string) {
 	client.once("ready", () => {
@@ -58,6 +58,20 @@ function main(client: Client, dbUri: string) {
 			description: "View valid channels in mentioned format.",
 		};
 
+		const slash_command_set: ApplicationCommandData = {
+			name: "set",
+			description: "Set the reportChannel",
+			options: [
+				{
+					type: "CHANNEL",
+					name: "reportchannel",
+					description: "The channel flagged messages get sent to.",
+					required: true,
+				},
+			],
+			defaultPermission: false,
+		};
+
 		const command_application_payload = [
 			context_convert_to_answer,
 			context_convert_to_question,
@@ -65,6 +79,7 @@ function main(client: Client, dbUri: string) {
 			context_flag,
 			slash_command_update,
 			slash_command_view,
+			slash_command_set,
 		];
 
 		client.guilds
@@ -79,11 +94,14 @@ function main(client: Client, dbUri: string) {
 								commands
 									.set(command_application_payload)
 									.then(commandData => {
-										const slash_command = commandData.find(
+										const slash_command_update = commandData.find(
 											commandObject => commandObject.name === "update"
 										);
+										const slash_command_set = commandData.find(
+											commandObject => commandObject.name === "set"
+										);
 
-										if (slash_command) {
+										if (slash_command_update && slash_command_set) {
 											const permissibleRoles: ApplicationCommandPermissionData[] = [];
 
 											guild.roles
@@ -104,7 +122,11 @@ function main(client: Client, dbUri: string) {
 														.set({
 															fullPermissions: [
 																{
-																	id: slash_command.id,
+																	id: slash_command_update.id,
+																	permissions: permissibleRoles,
+																},
+																{
+																	id: slash_command_set.id,
 																	permissions: permissibleRoles,
 																},
 															],
@@ -157,6 +179,8 @@ function main(client: Client, dbUri: string) {
 				await slashCommandUpdate(interaction);
 			} else if (interaction.commandName === "view") {
 				await slashCommandView(interaction);
+			} else if (interaction.commandName === "set") {
+				await slashCommandSet(interaction);
 			} else {
 				interaction
 					.reply({ ephemeral: true, content: "Invalid interactionData received." })

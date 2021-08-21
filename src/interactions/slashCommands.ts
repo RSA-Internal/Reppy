@@ -1,4 +1,4 @@
-import { CommandInteraction, MessageEmbed } from "discord.js";
+import { CommandInteraction, GuildChannel, MessageEmbed } from "discord.js";
 import { createGuildData, fetchGuildData, updateGuildData } from "../daos/GuildDataDAO";
 
 export async function slashCommandUpdate(interaction: CommandInteraction): Promise<void> {
@@ -83,6 +83,7 @@ export async function slashCommandView(interaction: CommandInteraction): Promise
 
 		if (guildData) {
 			const validChannels = guildData.validChannels.map(channelId => `<#${channelId}>\n`);
+			const reportChannelId = guildData.reportChannelId;
 
 			const embedReply = new MessageEmbed().setTitle("Reputation Gainable Channels");
 
@@ -104,9 +105,15 @@ export async function slashCommandView(interaction: CommandInteraction): Promise
 				}
 			});
 
-			embedReply.addField("\u200b", left.join(""), true);
-			embedReply.addField("\u200b", middle.join(""), true);
-			embedReply.addField("\u200b", right.join(""), true);
+			embedReply.addField(
+				"Report Channel",
+				reportChannelId.length > 0 ? `<#${reportChannelId}>` : "Not yet set.",
+				false
+			);
+
+			if (left.length > 0) embedReply.addField("\u200b", left.join(""), true);
+			if (middle.length > 0) embedReply.addField("\u200b", middle.join(""), true);
+			if (middle.length > 0) embedReply.addField("\u200b", right.join(""), true);
 
 			await interaction.editReply({ embeds: [embedReply] });
 		} else {
@@ -115,5 +122,45 @@ export async function slashCommandView(interaction: CommandInteraction): Promise
 	} else {
 		await interaction.editReply("Could not fetch guildId from interaction.");
 	}
+	return;
+}
+
+export async function slashCommandSet(interaction: CommandInteraction): Promise<void> {
+	await interaction.deferReply({ ephemeral: true });
+
+	const channel = interaction.options["_hoistedOptions"][0].channel as GuildChannel;
+
+	if (channel && channel.isText()) {
+		const guildId = interaction.guildId;
+
+		if (guildId) {
+			const guildDataResult = await fetchGuildData(guildId);
+			const guildData = guildDataResult.guildData;
+
+			if (guildData) {
+				const updateResult = await updateGuildData(guildId, undefined, channel.id);
+
+				if (updateResult.result) {
+					await interaction.editReply("Successfully updated guildData.");
+				} else {
+					await interaction.editReply(updateResult.message);
+				}
+			} else {
+				const createResult = await createGuildData(guildId, [], channel.id);
+
+				if (createResult.result) {
+					await interaction.editReply(`Successfully created guildData, and applied validChannels.`);
+				} else {
+					await interaction.editReply(createResult.message);
+				}
+				return;
+			}
+		} else {
+			await interaction.editReply("Could not fetch guildId from interaction.");
+		}
+	} else {
+		await interaction.editReply("Invalid channel provided.");
+	}
+
 	return;
 }
