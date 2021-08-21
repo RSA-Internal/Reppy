@@ -1,7 +1,17 @@
-import { ApplicationCommandData, ApplicationCommandPermissionData, Client, Intents, Permissions } from "discord.js";
+import {
+	ApplicationCommandData,
+	ApplicationCommandPermissionData,
+	Client,
+	CommandInteraction,
+	Intents,
+	Message,
+	MessagePayload,
+	Permissions,
+	WebhookEditMessageOptions,
+} from "discord.js";
 import { readFileSync } from "fs";
 import { connect } from "mongoose";
-import { createGuildData } from "./daos/GuildDataDAO";
+import { createGuildData, fetchGuildData } from "./daos/GuildDataDAO";
 import {
 	contextAcceptAnswer,
 	contextConvertToAnswer,
@@ -157,14 +167,6 @@ function main(client: Client, dbUri: string) {
 		- buttons
 		  + upvote
 		  + downvote
-		- context_menus
-		  + convert_to_answer
-		  + convert_to_question
-		  + accept_answer
-		  + flag
-		    * spam
-		    * broad
-			* other
 	*/
 
 	client.on("messageCreate", () => {
@@ -174,32 +176,58 @@ function main(client: Client, dbUri: string) {
 	});
 
 	client.on("interactionCreate", async interaction => {
+		const guild = interaction.guild;
+
+		if (!guild)
+			return await (interaction as CommandInteraction).reply({
+				ephemeral: true,
+				content: "Failed to fetch guild.",
+			});
+
+		const fetchedResult = await fetchGuildData(guild.id);
+		let guildData = fetchedResult.guildData;
+
+		if (!guildData) guildData = (await createGuildData(guild.id)).guildData;
+		if (!guildData)
+			return await (interaction as CommandInteraction).reply({
+				ephemeral: true,
+				content: "Failed to fetch|create guildData.",
+			});
+
+		let result: string | MessagePayload | WebhookEditMessageOptions;
+
 		if (interaction.isCommand()) {
+			await interaction.deferReply({ ephemeral: true });
+			const args = interaction.options["_hoistedOptions"];
+
 			if (interaction.commandName === "update") {
-				await slashCommandUpdate(interaction);
+				result = await slashCommandUpdate(interaction, guild, guildData, args);
 			} else if (interaction.commandName === "view") {
-				await slashCommandView(interaction);
+				result = await slashCommandView(interaction, guild, guildData);
 			} else if (interaction.commandName === "set") {
-				await slashCommandSet(interaction);
+				result = await slashCommandSet(interaction, guild, guildData, args);
 			} else {
-				interaction
-					.reply({ ephemeral: true, content: "Invalid interactionData received." })
-					.catch(console.error.bind(console));
+				result = "Invalid interactionData received.";
 			}
+
+			await interaction.editReply(result);
 		} else if (interaction.isContextMenu()) {
+			await interaction.deferReply({ ephemeral: true });
+			const message = interaction.options["_hoistedOptions"][0].message as Message;
+
 			if (interaction.commandName === "Convert to Answer") {
-				await contextConvertToAnswer(interaction);
+				result = await contextConvertToAnswer(interaction, guild, guildData, message, message.channel);
 			} else if (interaction.commandName === "Convert to Question") {
-				await contextConvertToQuestion(interaction);
+				result = await contextConvertToQuestion(interaction, guild, guildData, message, message.channel);
 			} else if (interaction.commandName === "Accept Answer") {
-				await contextAcceptAnswer(interaction);
+				result = await contextAcceptAnswer(interaction, guild, guildData, message, message.channel);
 			} else if (interaction.commandName === "Flag") {
-				await contextFlag(interaction);
+				result = await contextFlag(interaction, guild, guildData, message);
 			} else {
-				interaction
-					.reply({ ephemeral: true, content: "Invalid interactionData received." })
-					.catch(console.error.bind(console));
+				result = "Invalid interactionData received.";
 			}
+
+			await interaction.editReply(result);
 		}
 	});
 
