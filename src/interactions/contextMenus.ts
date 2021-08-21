@@ -131,7 +131,61 @@ export async function contextConvertToQuestion(interaction: ContextMenuInteracti
 }
 
 export async function contextAcceptAnswer(interaction: ContextMenuInteraction): Promise<void> {
-	await interaction.reply({ ephemeral: true, content: "NYI - contextAcceptAnswer" });
+	await interaction.deferReply({ ephemeral: true });
+	const guild = interaction.guild;
+
+	if (guild) {
+		const fetchResult = await fetchGuildData(guild.id);
+		const guildData = fetchResult.guildData;
+
+		if (guildData) {
+			const message = interaction.options["_hoistedOptions"][0].message as Message;
+
+			if (message) {
+				const channel = message.channel;
+
+				if (channel && channel.isThread()) {
+					const parent = channel.parent;
+
+					if (parent && guildData.validChannels.includes(parent.id)) {
+						const startMessage = await parent.messages.fetch(channel.id);
+
+						if (startMessage) {
+							const threadAuthor = startMessage.author.id;
+
+							if (interaction.user.id === threadAuthor) {
+								if (message.embeds.length > 0) {
+									const updatedEmbed = message.embeds[0];
+									updatedEmbed.setTitle("<:author_accepted:869447434089160710> Answer");
+
+									await message.edit({ embeds: [updatedEmbed], components: message.components });
+									await interaction.editReply("You have successfully accepted an answer.");
+								} else {
+									await interaction.editReply("That is not a valid answer to accept.");
+								}
+							} else {
+								await interaction.editReply(
+									"You are not allowed to accept an answer for another member's question."
+								);
+							}
+						} else {
+							await interaction.editReply("Could not fetch start message. Please try again.");
+						}
+					} else {
+						await interaction.editReply("This channel is not under valid reputation gainable channel.");
+					}
+				} else {
+					await interaction.editReply("This is not a valid location to convert a message to an answer.");
+				}
+			}
+		} else {
+			await interaction.editReply(fetchResult.message);
+		}
+	} else {
+		await interaction.editReply("Failed to fetch guildId from interaction.");
+	}
+
+	return;
 }
 
 export async function contextFlag(interaction: ContextMenuInteraction): Promise<void> {
