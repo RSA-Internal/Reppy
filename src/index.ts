@@ -164,13 +164,13 @@ function main(client: Client, dbUri: string) {
 			}
 		} else if (interaction.isContextMenu()) {
 			if (interaction.commandName === "Convert to Answer") {
-				contextConvertToAnswer(interaction);
+				await contextConvertToAnswer(interaction);
 			} else if (interaction.commandName === "Convert to Question") {
-				contextConvertToQuestion(interaction);
+				await contextConvertToQuestion(interaction);
 			} else if (interaction.commandName === "Accept Answer") {
-				contextAcceptAnswer(interaction);
+				await contextAcceptAnswer(interaction);
 			} else if (interaction.commandName === "Flag") {
-				contextFlag(interaction);
+				await contextFlag(interaction);
 			} else {
 				interaction
 					.reply({ ephemeral: true, content: "Invalid interactionData received." })
