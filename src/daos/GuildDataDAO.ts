@@ -1,11 +1,35 @@
 import type { Snowflake } from "discord.js";
-import guildDataModel, { IChannelData, IGuildData, IMessageData, IUserData } from "../models/guildData.model";
+import guildDataModel, {
+	IChannelData,
+	IGuildData,
+	IMessageData,
+	IPoolData,
+	IUserData,
+} from "../models/guildData.model";
 
 export interface IDAOResult {
 	readonly result: boolean;
 	readonly message: string;
 	readonly guildData?: IGuildData;
 	readonly userData?: IUserData;
+}
+
+export enum UserUpdateType {
+	REPUTATION,
+	POOL,
+}
+
+export interface UserUpdateData {
+	[UserUpdateType.REPUTATION]: { channelId: string; reputationChange: number };
+	[UserUpdateType.POOL]: { pool: IPoolData };
+}
+
+function isReputation(x: UserUpdateData[UserUpdateType]): x is UserUpdateData[UserUpdateType.REPUTATION] {
+	return "channelId" in x && "reputationChange" in x;
+}
+
+function isPool(x: UserUpdateData[UserUpdateType]): x is UserUpdateData[UserUpdateType.POOL] {
+	return "pool" in x;
 }
 
 /**
@@ -86,6 +110,10 @@ export async function createUserData(
 						const userDataBase: IUserData = {
 							userId,
 							reputation: reputationData,
+							pool: {
+								upvotes: 5,
+								downvotes: 3,
+							},
 						};
 
 						// update guild data in db
@@ -186,20 +214,24 @@ export async function updateGuildData(
 				const guildData = res.guildData;
 
 				if (guildData) {
-					let updateQuery = {};
+					const updateQuery: Partial<IGuildData> = {};
 
 					if (validChannels != undefined) {
 						guildData.validChannels = validChannels;
 
-						updateQuery = { validChannels: validChannels };
-					} else if (reportChannelId != undefined) {
+						updateQuery.validChannels = validChannels;
+					}
+
+					if (reportChannelId != undefined) {
 						guildData.reportChannelId = reportChannelId;
 
-						updateQuery = { reportChannelId: reportChannelId };
-					} else if (messageData != undefined) {
+						updateQuery.reportChannelId = reportChannelId;
+					}
+
+					if (messageData != undefined) {
 						guildData.messageData = messageData;
 
-						updateQuery = { messageData: messageData };
+						updateQuery.messageData = messageData;
 					}
 
 					guildDataModel
@@ -226,80 +258,82 @@ export async function updateGuildData(
 	});
 }
 
+//updateUserData<UserDataType.POOL>(...)
+
 /**
  * updateUserData is intended to be an intermediary between bot
  * and MongoDB. This will reduce the amount of DB constructive
  * calls outside of DB related locations.
  */
-export async function updateUserData(
+export async function updateUserData<T extends UserUpdateType>(
 	guildId: Snowflake,
 	userId: Snowflake,
-	channelId: Snowflake,
-	reputation: number
+	updateData: UserUpdateData[T]
 ): Promise<IDAOResult> {
-	return new Promise(resolve => {
-		fetchGuildData(guildId)
-			.then(res => {
-				const guildData = res.guildData;
+	const guildDataResult = await fetchGuildData(guildId);
 
-				if (guildData) {
-					const userData = guildData.userData;
-					const userRepData = userData.find(userDataObject => userDataObject.userId === userId);
+	if (!guildDataResult.result)
+		return Promise.resolve({ result: guildDataResult.result, message: guildDataResult.message });
 
-					if (userRepData) {
-						const hasChannelData = userRepData.reputation.find(
-							channelObject => channelObject.channelId === channelId
-						);
+	const guildData = guildDataResult.guildData;
 
-						if (hasChannelData) {
-							const newReputation: IChannelData = {
-								channelId,
-								reputation,
-							};
+	if (!guildData) return Promise.resolve({ result: false, message: "No guildData exists." });
 
-							const newUserRepData = userRepData.reputation.filter(
-								channelObject => channelObject.channelId != channelId
-							);
-							newUserRepData.push(newReputation);
+	const userDataResult = await fetchUserData(guildId, userId);
 
-							const newUserData = {
-								userId,
-								reputation: newUserRepData,
-							};
+	if (!userDataResult.result)
+		return Promise.resolve({ result: userDataResult.result, message: userDataResult.message, guildData });
 
-							const newGuildUserData = userData.filter(userDataObject => userDataObject.userId != userId);
-							newGuildUserData.push(newUserData);
+	const userData = userDataResult.userData;
 
-							guildData.userData = newGuildUserData;
+	if (!userData) return Promise.resolve({ result: false, message: "No userData exists.", guildData });
 
-							guildDataModel
-								.updateOne({ guildId }, { userData: newGuildUserData })
-								.then(() =>
-									resolve({
-										result: true,
-										message: "Successfully updated userData.",
-										guildData,
-										userData: newUserData,
-									})
-								)
-								.catch((err: Error) => resolve({ result: false, message: err.message }));
-						} else {
-							resolve({
-								result: false,
-								message: "No channelData exists.",
-								guildData,
-								userData: userRepData,
-							});
-						}
-					} else {
-						resolve({ result: false, message: "No userData exists.", guildData });
-					}
-				} else {
-					resolve({ result: false, message: "No guildData exists." });
-				}
-			})
-			.catch((err: Error) => resolve({ result: false, message: err.message }));
-	});
+	let newUserData: IUserData;
+
+	if (isReputation(updateData)) {
+		const newReputationData = userData.reputation.filter(channel => channel.channelId != updateData.channelId);
+		const oldChannelData = userData.reputation.find(channel => channel.channelId === updateData.channelId);
+		const newChannelData: IChannelData = {
+			channelId: updateData.channelId,
+			reputation: (oldChannelData != undefined ? oldChannelData.reputation : 0) + updateData.reputationChange,
+		};
+
+		newReputationData.push(newChannelData);
+
+		newUserData = {
+			userId: userData.userId,
+			reputation: newReputationData,
+			pool: userData.pool,
+		};
+	} else if (isPool(updateData)) {
+		newUserData = {
+			userId: userData.userId,
+			reputation: userData.reputation,
+			pool: updateData.pool,
+		};
+	} else {
+		return Promise.resolve({ result: false, message: "Failed to create newUserData.", guildData });
+	}
+
+	const newGuildUserData = guildData.userData.filter(savedData => savedData.userId != newUserData.userId);
+	newGuildUserData.push(newUserData);
+
+	try {
+		await guildDataModel.updateOne({ guildId }, { userData: newGuildUserData });
+		return Promise.resolve({
+			result: true,
+			message: "Successfully updated userData.",
+			guildData,
+			userData: newUserData,
+		});
+	} catch (err) {
+		return Promise.resolve({
+			result: false,
+			message: (err as Error).message,
+			guildData,
+			userData: userData,
+		});
+	}
 }
 
 /**

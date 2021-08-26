@@ -1,5 +1,4 @@
 import {
-	CommandInteraction,
 	CommandInteractionOption,
 	Guild,
 	GuildChannel,
@@ -11,7 +10,6 @@ import { updateGuildData } from "../daos/GuildDataDAO";
 import type { IGuildData } from "../models/guildData.model";
 
 export async function slashCommandUpdate(
-	interaction: CommandInteraction,
 	guild: Guild,
 	guildData: IGuildData,
 	args: CommandInteractionOption[]
@@ -65,8 +63,6 @@ export async function slashCommandUpdate(
 }
 
 export async function slashCommandView(
-	interaction: CommandInteraction,
-	guild: Guild,
 	guildData: IGuildData
 ): Promise<string | MessagePayload | WebhookEditMessageOptions> {
 	return new Promise(resolve => {
@@ -107,12 +103,7 @@ export async function slashCommandView(
 	});
 }
 
-export async function slashCommandSet(
-	interaction: CommandInteraction,
-	guild: Guild,
-	guildData: IGuildData,
-	args: CommandInteractionOption[]
-): Promise<string> {
+export async function slashCommandSet(guild: Guild, args: CommandInteractionOption[]): Promise<string> {
 	return new Promise(resolve => {
 		const channel = args[0].channel as GuildChannel;
 

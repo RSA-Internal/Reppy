@@ -51,6 +51,7 @@ function verify(
 	}
 	if (expectGuildData && !result.guildData) {
 		console.warn(`\t(GUILDDATA)[Expected: IGuildData Object, Got: undefined]`);
+		console.log(`\t${String(result.guildData)}`);
 		isPassing = false;
 		failed += 1;
 	} else {
@@ -118,16 +119,29 @@ async function main(): Promise<void> {
 	const res23 = await updateGuildData("-1", undefined, undefined);
 	verify("updateGuildDataReportChannelNoExist", res23, false, "No guildData exists.", false, false);
 
-	const res13 = await updateUserData("848412523526488114", "454873852254617601", "871596364327448617", 4);
-	verify("updateUserData", res13, true, "Successfully updated userData.", true, true);
+	const res24 = await updateGuildData(
+		"848412523526488114",
+		["180763895592386560", "165226280118255616"],
+		"843935056997253170"
+	);
+	verify("updateGuildDataMultipleField", res24, true, "Successfully updated guildData.", true, false);
 
-	const res14 = await updateUserData("-1", "454873852254617601", "871596364327448617", 4);
+	const res13 = await updateUserData("848412523526488114", "454873852254617601", {
+		channelId: "871596364327448617",
+		reputationChange: 4,
+	});
+	verify("updateUserDataGain4Rep", res13, true, "Successfully updated userData.", true, true);
+
+	const res14 = await updateUserData("-1", "454873852254617601", {
+		channelId: "871596364327448617",
+		reputationChange: 4,
+	});
 	verify("updateUserDataNoGuild", res14, false, "No guildData exists.", false, false);
 
-	const res15 = await updateUserData("848412523526488114", "454873852254617601", "-1", 4);
-	verify("updateUserDataNoChannel", res15, false, "No channelData exists.", true, true);
-
-	const res16 = await updateUserData("848412523526488114", "-1", "871596364327448617", 4);
+	const res16 = await updateUserData("848412523526488114", "-1", {
+		channelId: "-1",
+		reputationChange: 4,
+	});
 	verify("updateUserDataNoExist", res16, false, "No userData exists.", true, false);
 
 	const res17 = await deleteGuildData("165202235226062848");
