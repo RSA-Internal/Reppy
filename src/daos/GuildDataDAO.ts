@@ -1,5 +1,5 @@
 import type { Snowflake } from "discord.js";
-import guildDataModel, { IChannelData, IGuildData, IUserData } from "../models/guildData.model";
+import guildDataModel, { IChannelData, IGuildData, IMessageData, IUserData } from "../models/guildData.model";
 
 export interface IDAOResult {
 	readonly result: boolean;
@@ -177,7 +177,8 @@ export async function fetchUserData(guildId: Snowflake, userId: Snowflake): Prom
 export async function updateGuildData(
 	guildId: Snowflake,
 	validChannels?: string[],
-	reportChannelId?: string
+	reportChannelId?: string,
+	messageData?: IMessageData[]
 ): Promise<IDAOResult> {
 	return new Promise(resolve => {
 		fetchGuildData(guildId)
@@ -195,6 +196,10 @@ export async function updateGuildData(
 						guildData.reportChannelId = reportChannelId;
 
 						updateQuery = { reportChannelId: reportChannelId };
+					} else if (messageData != undefined) {
+						guildData.messageData = messageData;
+
+						updateQuery = { messageData: messageData };
 					}
 
 					guildDataModel
