@@ -7,14 +7,12 @@ import {
 	Message,
 	MessagePayload,
 	Permissions,
-	TextChannel,
-	User,
 	WebhookEditMessageOptions,
 } from "discord.js";
 import { readFileSync } from "fs";
 import { connect } from "mongoose";
 import { createGuildData, fetchGuildData } from "./daos/GuildDataDAO";
-import { buttonDownvote, buttonUpvote } from "./interactions/buttons";
+import { handleVote, VoteStatus } from "./interactions/buttons";
 import {
 	contextAcceptAnswer,
 	contextConvertToAnswer,
@@ -33,6 +31,8 @@ function main(client: Client, dbUri: string) {
 		const context_accept_answer = { name: "Accept Answer", type: 3 };
 		const context_flag = { name: "Flag", type: 3 };
 		const context_vote = { name: "Vote", type: 3 };
+
+		const context_rep = { name: "View Rep", type: 2 };
 
 		const slash_command_update: ApplicationCommandData = {
 			name: "update",
@@ -93,6 +93,7 @@ function main(client: Client, dbUri: string) {
 			context_accept_answer,
 			context_flag,
 			context_vote,
+			context_rep,
 			slash_command_update,
 			slash_command_view,
 			slash_command_set,
@@ -243,21 +244,14 @@ function main(client: Client, dbUri: string) {
 			result = "Invalid interactionData received.";
 
 			if (channel && channel.isThread()) {
-				const channelForReputation = channel.parent as TextChannel;
-				const userForReputation = interaction.message.author as User;
+				// const channelForReputation = channel.parent as TextChannel;
+				// const userForReputation = interaction.message.author as User;
 				const message = interaction.message as Message;
 
 				if (interaction.customId === "upvote") {
-					await buttonUpvote(interaction, guild, guildData, channelForReputation, userForReputation, message);
+					await handleVote(interaction, guild, guildData, message, VoteStatus.UPVOTE);
 				} else if (interaction.customId === "downvote") {
-					await buttonDownvote(
-						interaction,
-						guild,
-						guildData,
-						channelForReputation,
-						userForReputation,
-						message
-					);
+					await handleVote(interaction, guild, guildData, message, VoteStatus.DOWNVOTE);
 				}
 			}
 		}

@@ -1,14 +1,104 @@
-import type { ButtonInteraction, Guild, Message, TextChannel, User } from "discord.js";
-import { updateGuildData } from "../daos/GuildDataDAO";
-import type { IGuildData } from "../models/guildData.model";
+import type { ButtonInteraction, Guild, Message, TextBasedChannels } from "discord.js";
+import { IDAOResult, updateGuildData } from "../daos/GuildDataDAO";
+import type { IGuildData, IMessageData } from "../models/guildData.model";
 
-export async function buttonUpvote(
+async function rerenderVotes(updatedData: IDAOResult, channel: TextBasedChannels, messageId: string): Promise<void> {
+	const guildData = updatedData.guildData;
+
+	if (guildData) {
+		const allMessageData = guildData.messageData;
+		const messageData = allMessageData.find(savedData => savedData.messageId === messageId);
+
+		if (messageData && channel) {
+			const answerMessage = await channel.messages.fetch(messageId);
+
+			if (answerMessage) {
+				const answerEmbed = answerMessage.embeds[0];
+				answerEmbed.setFooter(
+					`Upvotes: ${messageData.upvotes.length} | Downvotes: ${messageData.downvotes.length}`
+				);
+
+				await answerMessage.edit({
+					embeds: [answerEmbed],
+				});
+			}
+		}
+	}
+
+	return;
+}
+
+interface IUpdateResult {
+	updatedMessages?: IMessageData[];
+	result: boolean;
+	message?: string;
+}
+
+export enum VoteStatus {
+	NOVOTE,
+	UPVOTE,
+	DOWNVOTE,
+}
+
+function updateMessageData(
+	userId: string,
+	voteType: VoteStatus,
+	voteStatus: VoteStatus,
+	allMessages: IMessageData[],
+	answerId: string
+): IUpdateResult {
+	const returnData = allMessages.filter(savedData => savedData.messageId != answerId);
+	const messageData = allMessages.find(savedData => savedData.messageId === answerId);
+
+	if (!messageData) {
+		return {
+			result: false,
+			message: "This is not a valid answer to vote on.",
+		};
+	}
+
+	if (voteStatus === VoteStatus.UPVOTE && voteType === VoteStatus.UPVOTE) {
+		return {
+			result: false,
+			message: "You have already upvoted this answer.",
+		};
+	}
+
+	if (voteStatus === VoteStatus.UPVOTE && voteType === VoteStatus.DOWNVOTE) {
+		messageData.upvotes = messageData.upvotes.filter(upvote => upvote != userId);
+	}
+
+	if (voteStatus === VoteStatus.DOWNVOTE && voteType === VoteStatus.UPVOTE) {
+		messageData.downvotes = messageData.downvotes.filter(downvote => downvote != userId);
+	}
+
+	if (voteStatus === VoteStatus.DOWNVOTE && voteType === VoteStatus.DOWNVOTE) {
+		return {
+			result: false,
+			message: "You have already downvoted this answer.",
+		};
+	}
+
+	if (voteType === VoteStatus.UPVOTE) {
+		messageData.upvotes.push(userId);
+	} else {
+		messageData.downvotes.push(userId);
+	}
+
+	returnData.push(messageData);
+
+	return {
+		result: true,
+		updatedMessages: returnData,
+	};
+}
+
+export async function handleVote(
 	interaction: ButtonInteraction,
 	guild: Guild,
 	guildData: IGuildData,
-	channelForReputation: TextChannel,
-	userForReputation: User,
-	message: Message
+	message: Message,
+	voteType: VoteStatus
 ): Promise<void> {
 	const answerIdField = message.embeds[0].fields.find(field => field.name === "Answer ID");
 
@@ -38,175 +128,35 @@ export async function buttonUpvote(
 		components: [],
 	});
 
-	let allMessageData = guildData.messageData;
-	let messageData = allMessageData.find(savedData => savedData.messageId === answerIdField.value);
-
-	if (!messageData) {
-		await interaction.editReply({
-			content: "This is not a valid answer to vote on.",
-			embeds: [],
-			components: [],
-		});
-		return;
-	}
-
+	const allMessageData = guildData.messageData;
 	const hasUpvoted = buttons.find(button => button.customId === "upvote")?.disabled ?? false;
 	const hasDownvoted = buttons.find(button => button.customId === "downvote")?.disabled ?? false;
 
-	if (hasUpvoted) {
+	const voteStatus = hasUpvoted ? VoteStatus.UPVOTE : hasDownvoted ? VoteStatus.DOWNVOTE : VoteStatus.NOVOTE;
+
+	const updateResult = updateMessageData(
+		interaction.user.id,
+		voteType,
+		voteStatus,
+		allMessageData,
+		answerIdField.value
+	);
+
+	if (!updateResult.result) {
 		await interaction.editReply({
-			content: "You have already upvoted this answer.",
+			content: `Failed to ${voteType}. [${updateResult.message}]`,
 			embeds: [],
 			components: [],
 		});
 		return;
 	}
-	if (hasDownvoted) {
-		// remove downvote from log
-		messageData.downvotes = messageData.downvotes.filter(downvote => downvote != interaction.user.id);
-	}
 
-	// add upvote to log
-	messageData.upvotes.push(interaction.user.id);
+	const updatedData = await updateGuildData(guild.id, undefined, undefined, updateResult.updatedMessages);
+	const channel = interaction.channel;
+	if (channel) await rerenderVotes(updatedData, channel, answerIdField.value);
 
-	allMessageData = allMessageData.filter(savedData => savedData.messageId != answerIdField.value);
-	allMessageData.push(messageData);
-
-	const updatedData = await updateGuildData(guild.id, undefined, undefined, allMessageData);
-	const guildData2 = updatedData.guildData;
-
-	if (guildData2) {
-		allMessageData = guildData2.messageData;
-		messageData = allMessageData.find(savedData => savedData.messageId === answerIdField.value);
-
-		if (messageData) {
-			const channel = interaction.channel;
-
-			if (channel) {
-				const answerMessage = await channel.messages.fetch(answerIdField.value);
-
-				if (answerMessage) {
-					const answerEmbed = answerMessage.embeds[0];
-					answerEmbed.setFooter(
-						`Upvotes: ${messageData.upvotes.length} | Downvotes: ${messageData.downvotes.length}`
-					);
-
-					await answerMessage.edit({
-						embeds: [answerEmbed],
-					});
-				}
-			}
-		}
-	}
-
-	//resolve("NYI - buttonUpvote");
 	await interaction.editReply({
 		content: "Successfully upvoted!",
-		embeds: [],
-		components: [],
-	});
-}
-
-export async function buttonDownvote(
-	interaction: ButtonInteraction,
-	guild: Guild,
-	guildData: IGuildData,
-	channelForReputation: TextChannel,
-	userForReputation: User,
-	message: Message
-): Promise<void> {
-	const answerIdField = message.embeds[0].fields.find(field => field.name === "Answer ID");
-
-	if (!answerIdField) {
-		await interaction.update({
-			content: "There was no associated answer id on that interaction.",
-			embeds: [],
-			components: [],
-		});
-		return;
-	}
-
-	const buttons = message.components[0].components;
-
-	if (!buttons) {
-		await interaction.update({
-			content: "There were no valid buttons on that interaction.",
-			embeds: [],
-			components: [],
-		});
-		return;
-	}
-
-	await interaction.update({
-		content: "Processing downvote.",
-		embeds: [],
-		components: [],
-	});
-
-	let allMessageData = guildData.messageData;
-	let messageData = allMessageData.find(savedData => savedData.messageId === answerIdField.value);
-
-	if (!messageData) {
-		await interaction.editReply({
-			content: "This is not a valid answer to vote on.",
-			embeds: [],
-			components: [],
-		});
-		return;
-	}
-
-	const hasUpvoted = buttons.find(button => button.customId === "upvote")?.disabled ?? false;
-	const hasDownvoted = buttons.find(button => button.customId === "downvote")?.disabled ?? false;
-
-	if (hasUpvoted) {
-		// remove downvote from log
-		messageData.upvotes = messageData.upvotes.filter(upvote => upvote != interaction.user.id);
-	}
-	if (hasDownvoted) {
-		await interaction.editReply({
-			content: "You have already dowmvoted this answer.",
-			embeds: [],
-			components: [],
-		});
-		return;
-	}
-
-	// add downvote to log
-	messageData.downvotes.push(interaction.user.id);
-
-	allMessageData = allMessageData.filter(savedData => savedData.messageId != answerIdField.value);
-	allMessageData.push(messageData);
-
-	const updatedData = await updateGuildData(guild.id, undefined, undefined, allMessageData);
-	const guildData2 = updatedData.guildData;
-
-	if (guildData2) {
-		allMessageData = guildData2.messageData;
-		messageData = allMessageData.find(savedData => savedData.messageId === answerIdField.value);
-
-		if (messageData) {
-			const channel = interaction.channel;
-
-			if (channel) {
-				const answerMessage = await channel.messages.fetch(answerIdField.value);
-
-				if (answerMessage) {
-					const answerEmbed = answerMessage.embeds[0];
-					answerEmbed.setFooter(
-						`Upvotes: ${messageData.upvotes.length} | Downvotes: ${messageData.downvotes.length}`
-					);
-
-					await answerMessage.edit({
-						embeds: [answerEmbed],
-					});
-				}
-			}
-		}
-	}
-
-	//resolve("NYI - buttonUpvote");
-	await interaction.editReply({
-		content: "Successfully downvoted!",
 		embeds: [],
 		components: [],
 	});
