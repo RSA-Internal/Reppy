@@ -84,7 +84,6 @@ export async function contextConvertToAnswer(
 
 export async function contextConvertToQuestion(
 	interaction: ContextMenuInteraction,
-	guild: Guild,
 	guildData: IGuildData,
 	message: Message,
 	channel: TextBasedChannels
@@ -123,7 +122,6 @@ export async function contextConvertToQuestion(
 
 export async function contextAcceptAnswer(
 	interaction: ContextMenuInteraction,
-	guild: Guild,
 	guildData: IGuildData,
 	message: Message,
 	channel: TextBasedChannels
@@ -221,7 +219,6 @@ export async function contextFlag(
 
 export async function contextVote(
 	interaction: ContextMenuInteraction,
-	guild: Guild,
 	guildData: IGuildData,
 	message: Message
 ): Promise<WebhookEditMessageOptions> {
@@ -238,54 +235,26 @@ export async function contextVote(
 
 		const buttonData: MessageButton[] = [];
 
-		let hasUpvoted = false;
-		let hasDownvoted = false;
 		let posterId = "";
 
 		if (messageData) {
-			hasUpvoted = messageData.upvotes.includes(interaction.user.id);
-			hasDownvoted = messageData.downvotes.includes(interaction.user.id);
 			posterId = messageData.posterId;
 		}
 
-		buttonData.push(
-			new MessageButton().setCustomId("upvote").setLabel("Upvote").setStyle("PRIMARY").setDisabled(hasUpvoted)
-		);
-		buttonData.push(
-			new MessageButton()
-				.setCustomId("downvote")
-				.setLabel("Downvote")
-				.setStyle("DANGER")
-				.setDisabled(hasDownvoted)
-		);
+		if (posterId === interaction.user.id) return resolve({ content: "You can not vote on your own answers." });
 
-		guild.members
-			.fetch(posterId)
-			.then(member => {
-				resolve({
-					embeds: [
-						new MessageEmbed()
-							.setTitle("Rep Voting")
-							.addField("Answer Poster", member.displayName, false)
-							.addField("Answer ID", message.id, false)
-							.addField("Answer", message.embeds[0].fields[0].value, false),
-					],
-					components: [new MessageActionRow().addComponents(buttonData)],
-				});
-			})
-			.catch((err: Error) => {
-				console.error(err);
+		buttonData.push(new MessageButton().setCustomId("upvote").setLabel("Upvote").setStyle("PRIMARY"));
+		buttonData.push(new MessageButton().setCustomId("downvote").setLabel("Downvote").setStyle("DANGER"));
 
-				resolve({
-					embeds: [
-						new MessageEmbed()
-							.setTitle("Rep Voting")
-							.addField("Answer Poster", posterId, false)
-							.addField("Answer ID", message.id, false)
-							.addField("Answer", message.embeds[0].fields[0].value, false),
-					],
-					components: [new MessageActionRow().addComponents(buttonData)],
-				});
-			});
+		resolve({
+			embeds: [
+				new MessageEmbed()
+					.setTitle("Rep Voting")
+					.addField("Answer Poster", `<@${posterId}>`, false)
+					.addField("Answer ID", message.id, false)
+					.addField("Answer", message.embeds[0].fields[0].value, false),
+			],
+			components: [new MessageActionRow().addComponents(buttonData)],
+		});
 	});
 }

@@ -7,12 +7,13 @@ import {
 	Message,
 	MessagePayload,
 	Permissions,
+	TextChannel,
 	WebhookEditMessageOptions,
 } from "discord.js";
 import { readFileSync } from "fs";
 import { connect } from "mongoose";
 import { createGuildData, fetchGuildData } from "./daos/GuildDataDAO";
-import { handleVote, VoteStatus } from "./interactions/buttons";
+import { handleVote, ReputationHolder, VoteStatus } from "./interactions/buttons";
 import {
 	contextAcceptAnswer,
 	contextConvertToAnswer,
@@ -169,11 +170,6 @@ function main(client: Client, dbUri: string) {
 
 		messageCreate
 		- question inference
-
-		interactionCreate
-		- buttons
-		  + upvote
-		  + downvote
 	*/
 
 	client.on("messageCreate", () => {
@@ -208,11 +204,11 @@ function main(client: Client, dbUri: string) {
 			const args = interaction.options["_hoistedOptions"];
 
 			if (interaction.commandName === "update") {
-				result = await slashCommandUpdate(interaction, guild, guildData, args);
+				result = await slashCommandUpdate(guild, guildData, args);
 			} else if (interaction.commandName === "view") {
-				result = await slashCommandView(interaction, guild, guildData);
+				result = await slashCommandView(guildData);
 			} else if (interaction.commandName === "set") {
-				result = await slashCommandSet(interaction, guild, guildData, args);
+				result = await slashCommandSet(guild, args);
 			} else {
 				result = "Invalid interactionData received.";
 			}
@@ -225,33 +221,37 @@ function main(client: Client, dbUri: string) {
 			if (interaction.commandName === "Convert to Answer") {
 				result = await contextConvertToAnswer(interaction, guild, guildData, message, message.channel);
 			} else if (interaction.commandName === "Convert to Question") {
-				result = await contextConvertToQuestion(interaction, guild, guildData, message, message.channel);
+				result = await contextConvertToQuestion(interaction, guildData, message, message.channel);
 			} else if (interaction.commandName === "Accept Answer") {
-				result = await contextAcceptAnswer(interaction, guild, guildData, message, message.channel);
+				result = await contextAcceptAnswer(interaction, guildData, message, message.channel);
 			} else if (interaction.commandName === "Flag") {
 				result = await contextFlag(interaction, guild, guildData, message);
 			} else if (interaction.commandName === "Vote") {
-				result = await contextVote(interaction, guild, guildData, message);
+				result = await contextVote(interaction, guildData, message);
 			} else {
 				result = "Invalid interactionData received.";
 			}
 
 			await interaction.editReply(result);
 		} else if (interaction.isButton()) {
-			// guild, channel, userId
 			const channel = interaction.channel;
 
 			result = "Invalid interactionData received.";
 
 			if (channel && channel.isThread()) {
-				// const channelForReputation = channel.parent as TextChannel;
-				// const userForReputation = interaction.message.author as User;
+				const channelForReputation = channel.parent as TextChannel;
 				const message = interaction.message as Message;
+				const userForReputation = message.embeds[0].fields.find(field => field.name === "Answer Poster")?.value;
+
+				const repData: ReputationHolder = {
+					channelId: channelForReputation.id,
+					memberId: userForReputation?.slice(2, userForReputation.length - 1) ?? "-1",
+				};
 
 				if (interaction.customId === "upvote") {
-					await handleVote(interaction, guild, guildData, message, VoteStatus.UPVOTE);
+					await handleVote(interaction, guild, guildData, message, VoteStatus.UPVOTE, repData);
 				} else if (interaction.customId === "downvote") {
-					await handleVote(interaction, guild, guildData, message, VoteStatus.DOWNVOTE);
+					await handleVote(interaction, guild, guildData, message, VoteStatus.DOWNVOTE, repData);
 				}
 			}
 		}
