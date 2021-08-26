@@ -6,11 +6,19 @@ export interface IGuildData extends Document {
 	validChannels: string[];
 	userData: IUserData[];
 	reportChannelId: Snowflake;
+	messageData: IMessageData[];
 }
 
 export interface IUserData {
 	readonly userId: Snowflake;
 	readonly reputation: readonly IChannelData[];
+}
+
+export interface IMessageData {
+	readonly messageId: Snowflake;
+	readonly posterId: Snowflake;
+	upvotes: Snowflake[];
+	downvotes: Snowflake[];
 }
 
 export interface IChannelData {
@@ -29,5 +37,10 @@ export default model<IGuildData>(
 			default: [],
 		},
 		reportChannelId: { type: String, default: "" },
+		messageData: {
+			type: [{ messageId: String, posterId: String, upvotes: [String], downvotes: [String] }],
+			index: true,
+			default: [],
+		},
 	})
 );

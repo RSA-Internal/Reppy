@@ -6,8 +6,10 @@ import {
 	MessageButton,
 	MessageEmbed,
 	TextBasedChannels,
+	WebhookEditMessageOptions,
 } from "discord.js";
-import type { IGuildData } from "../models/guildData.model";
+import { updateGuildData } from "../daos/GuildDataDAO";
+import type { IGuildData, IMessageData } from "../models/guildData.model";
 
 export async function contextConvertToAnswer(
 	interaction: ContextMenuInteraction,
@@ -41,20 +43,22 @@ export async function contextConvertToAnswer(
 												.addField("\u200b", content, true)
 												.setFooter("Upvotes: 0 | Downvotes: 0"),
 										],
-										components: [
-											new MessageActionRow().addComponents([
-												new MessageButton()
-													.setCustomId("upvote")
-													.setLabel("Upvote")
-													.setStyle("PRIMARY"),
-												new MessageButton()
-													.setCustomId("downvote")
-													.setLabel("Downvote")
-													.setStyle("DANGER"),
-											]),
-										],
 									})
-									.then(() => {
+									.then(answerMessage => {
+										const messageData = guildData.messageData;
+										const newAnswerData: IMessageData = {
+											messageId: answerMessage.id,
+											posterId: message.author.id,
+											upvotes: [],
+											downvotes: [],
+										};
+
+										messageData.push(newAnswerData);
+
+										updateGuildData(guildData.guildId, undefined, undefined, messageData).catch(
+											console.error.bind(console)
+										);
+
 										message
 											.delete()
 											.then(() => {
@@ -212,5 +216,76 @@ export async function contextFlag(
 		} else {
 			return resolve("This guild does not have a report channel. Please tell someone to set it.");
 		}
+	});
+}
+
+export async function contextVote(
+	interaction: ContextMenuInteraction,
+	guild: Guild,
+	guildData: IGuildData,
+	message: Message
+): Promise<WebhookEditMessageOptions> {
+	return new Promise(resolve => {
+		if (!message.channel.isThread()) {
+			return resolve({ content: "Cannot vote on this message." });
+		}
+
+		// validate message is Answer
+		if (message.embeds.length === 0) return resolve({ content: "This is not a valid answer." });
+
+		// Check if User has up/down voted already
+		const messageData = guildData.messageData.find(storedMessage => storedMessage.messageId === message.id);
+
+		const buttonData: MessageButton[] = [];
+
+		let hasUpvoted = false;
+		let hasDownvoted = false;
+		let posterId = "";
+
+		if (messageData) {
+			hasUpvoted = messageData.upvotes.includes(interaction.user.id);
+			hasDownvoted = messageData.downvotes.includes(interaction.user.id);
+			posterId = messageData.posterId;
+		}
+
+		buttonData.push(
+			new MessageButton().setCustomId("upvote").setLabel("Upvote").setStyle("PRIMARY").setDisabled(hasUpvoted)
+		);
+		buttonData.push(
+			new MessageButton()
+				.setCustomId("downvote")
+				.setLabel("Downvote")
+				.setStyle("DANGER")
+				.setDisabled(hasDownvoted)
+		);
+
+		guild.members
+			.fetch(posterId)
+			.then(member => {
+				resolve({
+					embeds: [
+						new MessageEmbed()
+							.setTitle("Rep Voting")
+							.addField("Answer Poster", member.displayName, false)
+							.addField("Answer ID", message.id, false)
+							.addField("Answer", message.embeds[0].fields[0].value, false),
+					],
+					components: [new MessageActionRow().addComponents(buttonData)],
+				});
+			})
+			.catch((err: Error) => {
+				console.error(err);
+
+				resolve({
+					embeds: [
+						new MessageEmbed()
+							.setTitle("Rep Voting")
+							.addField("Answer Poster", posterId, false)
+							.addField("Answer ID", message.id, false)
+							.addField("Answer", message.embeds[0].fields[0].value, false),
+					],
+					components: [new MessageActionRow().addComponents(buttonData)],
+				});
+			});
 	});
 }

@@ -69,8 +69,6 @@ export async function slashCommandView(
 	guild: Guild,
 	guildData: IGuildData
 ): Promise<string | MessagePayload | WebhookEditMessageOptions> {
-	await interaction.deferReply({ ephemeral: true });
-
 	return new Promise(resolve => {
 		const validChannels = guildData.validChannels.map(channelId => `<#${channelId}>\n`);
 		const reportChannelId = guildData.reportChannelId;

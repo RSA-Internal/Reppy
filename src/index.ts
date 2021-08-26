@@ -7,16 +7,20 @@ import {
 	Message,
 	MessagePayload,
 	Permissions,
+	TextChannel,
+	User,
 	WebhookEditMessageOptions,
 } from "discord.js";
 import { readFileSync } from "fs";
 import { connect } from "mongoose";
 import { createGuildData, fetchGuildData } from "./daos/GuildDataDAO";
+import { buttonDownvote, buttonUpvote } from "./interactions/buttons";
 import {
 	contextAcceptAnswer,
 	contextConvertToAnswer,
 	contextConvertToQuestion,
 	contextFlag,
+	contextVote,
 } from "./interactions/contextMenus";
 import { slashCommandSet, slashCommandUpdate, slashCommandView } from "./interactions/slashCommands";
 
@@ -28,6 +32,7 @@ function main(client: Client, dbUri: string) {
 		const context_convert_to_question = { name: "Convert to Question", type: 3 };
 		const context_accept_answer = { name: "Accept Answer", type: 3 };
 		const context_flag = { name: "Flag", type: 3 };
+		const context_vote = { name: "Vote", type: 3 };
 
 		const slash_command_update: ApplicationCommandData = {
 			name: "update",
@@ -87,6 +92,7 @@ function main(client: Client, dbUri: string) {
 			context_convert_to_question,
 			context_accept_answer,
 			context_flag,
+			context_vote,
 			slash_command_update,
 			slash_command_view,
 			slash_command_set,
@@ -223,11 +229,37 @@ function main(client: Client, dbUri: string) {
 				result = await contextAcceptAnswer(interaction, guild, guildData, message, message.channel);
 			} else if (interaction.commandName === "Flag") {
 				result = await contextFlag(interaction, guild, guildData, message);
+			} else if (interaction.commandName === "Vote") {
+				result = await contextVote(interaction, guild, guildData, message);
 			} else {
 				result = "Invalid interactionData received.";
 			}
 
 			await interaction.editReply(result);
+		} else if (interaction.isButton()) {
+			// guild, channel, userId
+			const channel = interaction.channel;
+
+			result = "Invalid interactionData received.";
+
+			if (channel && channel.isThread()) {
+				const channelForReputation = channel.parent as TextChannel;
+				const userForReputation = interaction.message.author as User;
+				const message = interaction.message as Message;
+
+				if (interaction.customId === "upvote") {
+					await buttonUpvote(interaction, guild, guildData, channelForReputation, userForReputation, message);
+				} else if (interaction.customId === "downvote") {
+					await buttonDownvote(
+						interaction,
+						guild,
+						guildData,
+						channelForReputation,
+						userForReputation,
+						message
+					);
+				}
+			}
 		}
 	});
 
