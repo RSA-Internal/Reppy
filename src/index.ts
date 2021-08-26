@@ -12,6 +12,7 @@ import {
 } from "discord.js";
 import { readFileSync } from "fs";
 import { connect } from "mongoose";
+import { init } from "./dailyReset";
 import { createGuildData, fetchGuildData } from "./daos/GuildDataDAO";
 import { handleVote, ReputationHolder, VoteStatus } from "./interactions/buttons";
 import {
@@ -26,6 +27,7 @@ import { slashCommandSet, slashCommandUpdate, slashCommandView } from "./interac
 function main(client: Client, dbUri: string) {
 	client.once("ready", () => {
 		console.log("Client logged in.");
+		init();
 
 		const context_convert_to_answer = { name: "Convert to Answer", type: 3 };
 		const context_convert_to_question = { name: "Convert to Question", type: 3 };
@@ -271,6 +273,8 @@ function main(client: Client, dbUri: string) {
 	}).catch(console.warn.bind(console));
 }
 
+let client: Client | undefined;
+
 try {
 	const { token, dbUri } = JSON.parse(readFileSync("token.json", "utf-8")) as { token: string; dbUri: string };
 
@@ -278,14 +282,18 @@ try {
 		throw new Error("Invalid token provided. Please be sure that `token.json` contains your bot token.");
 	}
 
-	const client = new Client({
+	client = new Client({
 		intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MEMBERS],
 	});
 
-	client
-		.login(token)
-		.then(() => main(client, dbUri))
-		.catch(console.error.bind(console));
+	if (client != undefined) {
+		client
+			.login(token)
+			.then(() => main(client as Client, dbUri))
+			.catch(console.error.bind(console));
+	}
 } catch (e) {
 	console.error(e);
 }
+
+export default client;
