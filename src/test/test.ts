@@ -1,5 +1,6 @@
 import { readFileSync } from "fs";
 import { connect } from "mongoose";
+import { resetPools } from "../dailyReset";
 import {
 	createGuildData,
 	createUserData,
@@ -31,7 +32,8 @@ function verify(
 	expectedResult: boolean,
 	expectedMessage: string,
 	expectGuildData?: boolean,
-	expectUserData?: boolean
+	expectUserData?: boolean,
+	customAssert?: boolean
 ): boolean {
 	let isPassing = true;
 	console.log(`Testing: ${testName}`);
@@ -63,6 +65,16 @@ function verify(
 		failed += 1;
 	} else {
 		passed += 1;
+	}
+
+	if (customAssert != undefined) {
+		if (customAssert) {
+			passed += 1;
+		} else {
+			console.warn(`\t(CUSTOMASSERT)[Expected: ..., Got: ...]`);
+			isPassing = false;
+			failed += 1;
+		}
 	}
 
 	console.info(`${testName} ${isPassing ? "PASSED" : "FAILED"}.\n`);
@@ -143,6 +155,22 @@ async function main(): Promise<void> {
 		reputationChange: 4,
 	});
 	verify("updateUserDataNoExist", res16, false, "No userData exists.", true, false);
+
+	const res30a = await updateUserData("848412523526488114", "454873852254617601", {
+		pool: { upvotes: 0, downvotes: 0 },
+	});
+	verify("updateUserDataPools", res30a, true, "Successfully updated userData.", true, true);
+	await resetPools(["848412523526488114"]);
+	const res30b = await fetchUserData("848412523526488114", "454873852254617601");
+	verify(
+		"fetchUserDataPoolsWithAssert",
+		res30a,
+		true,
+		"Successfully updated userData.",
+		true,
+		true,
+		res30b.userData?.pool.upvotes === 5
+	);
 
 	const res17 = await deleteGuildData("165202235226062848");
 	verify("deleteGuildData", res17, true, "Successfully deleted guildData.", false, false);
