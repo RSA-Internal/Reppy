@@ -10,6 +10,7 @@ import {
 } from "discord.js";
 import { calculateTotalRep, fetchUserData, updateGuildData } from "../daos/GuildDataDAO";
 import type { IGuildData, IMessageData } from "../models/guildData.model";
+import { DetectionType, isMessageQuestion } from "../util";
 
 export async function contextConvertToAnswer(
 	interaction: ContextMenuInteraction,
@@ -95,6 +96,13 @@ export async function contextConvertToQuestion(
 			if (interaction.user.id === author) {
 				// convert to question.
 				if (!message.hasThread) {
+					const messageGrade = isMessageQuestion(DetectionType.CONTEXT, message.content);
+
+					if (!messageGrade.isQuestion)
+						return resolve(
+							`This message did not qualify as a valid question. [Score: ${messageGrade.score}]`
+						);
+
 					message
 						.startThread({
 							name: message.content.substring(
