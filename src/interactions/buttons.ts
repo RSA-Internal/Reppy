@@ -1,4 +1,5 @@
 import type { ButtonInteraction, Guild, Message, Snowflake, TextBasedChannels } from "discord.js";
+import { getPrettyTimeRemaining } from "../dailyReset";
 import { createUserData, fetchUserData, IDAOResult, updateGuildData, updateUserData } from "../daos/GuildDataDAO";
 import type { IGuildData, IMessageData } from "../models/guildData.model";
 
@@ -146,7 +147,7 @@ export async function handleVote(
 
 	if (count <= 0) {
 		await interaction.update({
-			content: "Your daily pool is empty. Please wait ${timeFormatInHours} for it to be refilled.",
+			content: `Your daily pool is empty. Please wait ${getPrettyTimeRemaining()} for it to be refilled.`,
 			embeds: [],
 			components: [],
 		});
@@ -226,6 +227,18 @@ export async function handleVote(
 		await updateUserData(guildData.guildId, repData.memberId, {
 			channelId: repData.channelId,
 			reputationChange: updateResult.repDelta,
+		});
+
+		const lifetime = userData.lifetime;
+
+		if (voteType === VoteStatus.UPVOTE) {
+			lifetime.upvotes += 1;
+		} else {
+			lifetime.downvotes += 1;
+		}
+
+		await updateUserData(guildData.guildId, repData.memberId, {
+			lifetime,
 		});
 	}
 

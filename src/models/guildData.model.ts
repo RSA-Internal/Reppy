@@ -13,6 +13,7 @@ export interface IUserData {
 	readonly userId: Snowflake;
 	readonly reputation: IChannelData[];
 	readonly pool: IPoolData;
+	readonly lifetime: IPoolData;
 }
 
 export interface IMessageData {
@@ -43,6 +44,7 @@ export default model<IGuildData>(
 					userId: String,
 					reputation: [{ channelId: String, reputation: Number }],
 					pool: { upvotes: Number, downvotes: Number },
+					lifetime: { upvotes: Number, downvotes: Number },
 				},
 			],
 			index: true,

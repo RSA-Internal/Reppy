@@ -1,6 +1,5 @@
 import client from ".";
-import { fetchGuildData, updateUserData } from "./daos/GuildDataDAO";
-import type { IChannelData } from "./models/guildData.model";
+import { calculateTotalRep, fetchGuildData, updateUserData } from "./daos/GuildDataDAO";
 
 const DAILY_MS = 24 * 60 * 60 * 1000;
 
@@ -12,18 +11,26 @@ export function init(): void {
 	}, msUntilMidnight);
 }
 
+export function getPrettyTimeRemaining(): string {
+	const sec = getMsUntilMidnight() / 1000;
+
+	const hours = Math.floor(sec / 3600);
+	const minutes = Math.floor((sec % 3600) / 60);
+	const seconds = Math.floor(sec % 60);
+
+	const timeRemaining = [];
+
+	if (hours > 0) timeRemaining.push(String(hours) + " hours");
+	if (minutes > 0) timeRemaining.push(String(minutes) + " minutes");
+	if (seconds > 0) timeRemaining.push(String(seconds) + " seconds");
+
+	return timeRemaining.join(", ");
+}
+
 function getMsUntilMidnight(now = Date.now()): number {
 	const roundUp = Math.ceil(now / DAILY_MS) * DAILY_MS;
 
 	return roundUp - now;
-}
-
-function calculateTotalRep(channelData: IChannelData[]): number {
-	let rep = 0;
-
-	channelData.forEach(channel => (rep += channel.reputation));
-
-	return rep;
 }
 
 export async function resetPools(guilds: string[] = []): Promise<void> {
