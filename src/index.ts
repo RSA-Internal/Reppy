@@ -24,6 +24,7 @@ import {
 	contextVote,
 } from "./interactions/contextMenus";
 import { slashCommandSet, slashCommandUpdate, slashCommandView } from "./interactions/slashCommands";
+import { DetectionType, isMessageQuestion } from "./util";
 
 function main(client: Client, dbUri: string) {
 	client.once("ready", () => {
@@ -175,10 +176,20 @@ function main(client: Client, dbUri: string) {
 		- question inference
 	*/
 
-	client.on("messageCreate", () => {
+	client.on("messageCreate", message => {
 		console.log("Message received.");
 
 		// check if message is in valid channel for guild
+		const messageGrade = isMessageQuestion(DetectionType.MESSAGE, message.content);
+		if (messageGrade.isQuestion) {
+			message
+				.startThread({
+					name: message.content.substring(0, message.content.indexOf("?") || message.content.indexOf(".")),
+					autoArchiveDuration: 1440,
+					reason: `contextConvertToQuestion by AutomatedCheck.`,
+				})
+				.catch(console.error.bind(console));
+		}
 	});
 
 	client.on("interactionCreate", async interaction => {
