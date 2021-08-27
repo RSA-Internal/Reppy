@@ -6,9 +6,14 @@ export enum DetectionType {
 	CONTEXT = 4,
 }
 
+export interface MessageGrade {
+	isQuestion: boolean;
+	score: number;
+}
+
 const scoreGenerators = {
 	scoreWordCount: (content: string): number => {
-		return content.split(" ").length > expectedWordCount ? 1 : 0;
+		return content.split(" ").length >= expectedWordCount ? 1 : 0;
 	},
 	scoreQMark: (content: string): number => {
 		return content.includes("?") ? 3 : 0;
@@ -17,16 +22,17 @@ const scoreGenerators = {
 		return content.includes("```") ? 3 : 0;
 	},
 	scoreStartingKeyword: (content: string): number => {
-		return keywords.includes(content.split(" ")[0]) ? 2 : 0;
+		return keywords.includes(content.split(" ")[0].toLowerCase()) ? 2 : 0;
 	},
 	scoreIncludingKeywords: (content: string): number => {
+		let result = 0;
 		content
 			.split(" ")
 			.slice(1)
 			.forEach(word => {
-				if (keywords.includes(word)) return 1;
+				if (keywords.includes(word.toLowerCase())) result = 1;
 			});
-		return 0;
+		return result;
 	},
 };
 
@@ -40,6 +46,11 @@ function generateScore(content: string): number {
 	return scoreGenerator;
 }
 
-export function isMessageQuestion(type: DetectionType, content: string): boolean {
-	return generateScore(content) >= type.valueOf();
+export function isMessageQuestion(type: DetectionType, content: string): MessageGrade {
+	const score = generateScore(content);
+
+	return {
+		isQuestion: score >= type.valueOf(),
+		score,
+	};
 }
