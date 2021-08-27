@@ -17,11 +17,13 @@ export interface IDAOResult {
 export enum UserUpdateType {
 	REPUTATION,
 	POOL,
+	LIFETIME,
 }
 
 export interface UserUpdateData {
 	[UserUpdateType.REPUTATION]: { channelId: string; reputationChange: number };
 	[UserUpdateType.POOL]: { pool: IPoolData };
+	[UserUpdateType.LIFETIME]: { lifetime: IPoolData };
 }
 
 function isReputation(x: UserUpdateData[UserUpdateType]): x is UserUpdateData[UserUpdateType.REPUTATION] {
@@ -30,6 +32,18 @@ function isReputation(x: UserUpdateData[UserUpdateType]): x is UserUpdateData[Us
 
 function isPool(x: UserUpdateData[UserUpdateType]): x is UserUpdateData[UserUpdateType.POOL] {
 	return "pool" in x;
+}
+
+function isLifetime(x: UserUpdateData[UserUpdateType]): x is UserUpdateData[UserUpdateType.LIFETIME] {
+	return "lifetime" in x;
+}
+
+export function calculateTotalRep(channelData: IChannelData[]): number {
+	let rep = 0;
+
+	channelData.forEach(channel => (rep += channel.reputation));
+
+	return rep;
 }
 
 /**
@@ -113,6 +127,10 @@ export async function createUserData(
 							pool: {
 								upvotes: 5,
 								downvotes: 3,
+							},
+							lifetime: {
+								upvotes: 0,
+								downvotes: 0,
 							},
 						};
 
@@ -304,12 +322,21 @@ export async function updateUserData<T extends UserUpdateType>(
 			userId: userData.userId,
 			reputation: newReputationData,
 			pool: userData.pool,
+			lifetime: userData.lifetime,
 		};
 	} else if (isPool(updateData)) {
 		newUserData = {
 			userId: userData.userId,
 			reputation: userData.reputation,
 			pool: updateData.pool,
+			lifetime: userData.lifetime,
+		};
+	} else if (isLifetime(updateData)) {
+		newUserData = {
+			userId: userData.userId,
+			reputation: userData.reputation,
+			pool: userData.pool,
+			lifetime: updateData.lifetime,
 		};
 	} else {
 		return Promise.resolve({ result: false, message: "Failed to create newUserData.", guildData });

@@ -8,7 +8,7 @@ import {
 	TextBasedChannels,
 	WebhookEditMessageOptions,
 } from "discord.js";
-import { updateGuildData } from "../daos/GuildDataDAO";
+import { calculateTotalRep, fetchUserData, updateGuildData } from "../daos/GuildDataDAO";
 import type { IGuildData, IMessageData } from "../models/guildData.model";
 
 export async function contextConvertToAnswer(
@@ -256,5 +256,53 @@ export async function contextVote(
 			],
 			components: [new MessageActionRow().addComponents(buttonData)],
 		});
+	});
+}
+
+export async function contextViewRep(
+	interaction: ContextMenuInteraction,
+	guild: Guild
+): Promise<WebhookEditMessageOptions> {
+	const guildId = guild.id;
+	const userId = interaction.targetId;
+
+	const member = await guild.members.fetch(userId);
+
+	const userDataResult = await fetchUserData(guildId, userId);
+
+	if (!userDataResult || !userDataResult.result) return Promise.resolve({ content: userDataResult.message });
+
+	const userData = userDataResult.userData;
+
+	if (!userData) return Promise.resolve({ content: "No userData exists." });
+
+	const channelMapping: { [index: string]: string } = {};
+
+	(await guild.channels.fetch()).map(channel => {
+		if (channel.isText()) {
+			channelMapping[channel.id] = channel.name;
+		}
+	});
+
+	return Promise.resolve({
+		embeds: [
+			new MessageEmbed()
+				.setTitle(`Reputation for ${member.displayName}`)
+				.setDescription(`Total Reputation: ${calculateTotalRep(userData.reputation)}`)
+				.addFields(
+					userData.reputation.map(channelData => {
+						return {
+							name: channelMapping[channelData.channelId],
+							value: String(channelData.reputation),
+							inline: true,
+						};
+					})
+				)
+				.setFooter(
+					`Lifetime Upvotes: ${userData.lifetime.upvotes ?? 0} | Downvotes: ${
+						userData.lifetime.downvotes ?? 0
+					}`
+				),
+		],
 	});
 }

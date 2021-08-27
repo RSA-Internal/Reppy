@@ -20,6 +20,7 @@ import {
 	contextConvertToAnswer,
 	contextConvertToQuestion,
 	contextFlag,
+	contextViewRep,
 	contextVote,
 } from "./interactions/contextMenus";
 import { slashCommandSet, slashCommandUpdate, slashCommandView } from "./interactions/slashCommands";
@@ -230,6 +231,8 @@ function main(client: Client, dbUri: string) {
 				result = await contextFlag(interaction, guild, guildData, message);
 			} else if (interaction.commandName === "Vote") {
 				result = await contextVote(interaction, guildData, message);
+			} else if (interaction.commandName === "View Rep") {
+				result = await contextViewRep(interaction, guild);
 			} else {
 				result = "Invalid interactionData received.";
 			}
