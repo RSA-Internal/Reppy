@@ -169,17 +169,21 @@ function main(client: Client, dbUri: string) {
 			.catch(console.warn.bind(console));
 	});
 
-	/**
-	 	Needed Events
-
-		messageCreate
-		- question inference
-	*/
-
-	client.on("messageCreate", message => {
+	client.on("messageCreate", async message => {
 		console.log("Message received.");
 
-		// check if message is in valid channel for guild
+		const guild = message.guild;
+
+		if (!guild) return;
+
+		const fetchedResult = await fetchGuildData(guild.id);
+		let guildData = fetchedResult.guildData;
+
+		if (!guildData) guildData = (await createGuildData(guild.id)).guildData;
+		if (!guildData) return;
+
+		if (!guildData.validChannels.includes(message.channelId)) return;
+
 		const messageGrade = isMessageQuestion(DetectionType.MESSAGE, message.content);
 		if (messageGrade.isQuestion) {
 			message
