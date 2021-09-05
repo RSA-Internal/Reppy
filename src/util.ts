@@ -3,7 +3,7 @@ const expectedWordCount = 10;
 
 export enum DetectionType {
 	MESSAGE = 7,
-	CONTEXT = 4,
+	CONTEXT = 5,
 }
 
 export interface MessageGrade {
