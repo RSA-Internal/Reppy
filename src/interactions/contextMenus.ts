@@ -6,9 +6,9 @@ import {
 	MessageButton,
 	MessageEmbed,
 	TextBasedChannels,
-	WebhookEditMessageOptions
+	WebhookEditMessageOptions,
 } from "discord.js";
-import { calculateTotalRep, fetchUserData, updateGuildData } from "../daos/GuildDataDAO";
+import { calculateTotalRep, fetchUserData, updateGuildData, updateUserData } from "../daos/GuildDataDAO";
 import type { IGuildData, IMessageData } from "../models/guildData.model";
 import { DetectionType, isMessageQuestion } from "../util";
 
@@ -105,10 +105,9 @@ export async function contextConvertToQuestion(
 
 					message
 						.startThread({
-							name: message.content.substring(
-								0,
-								message.content.indexOf("?") || message.content.indexOf(".")
-							).substring(0, 50),
+							name: message.content
+								.substring(0, message.content.indexOf("?") || message.content.indexOf("."))
+								.substring(0, 50),
 							autoArchiveDuration: 1440,
 							reason: `contextConvertToQuestion by ${interaction.user.username}`,
 						})
@@ -134,48 +133,57 @@ export async function contextAcceptAnswer(
 	message: Message,
 	channel: TextBasedChannels
 ): Promise<string> {
-	return new Promise(resolve => {
-		if (channel.isThread()) {
-			const parent = channel.parent;
+	if (!channel.isThread()) return Promise.resolve("This is not a valid channel to accept an answer in.");
+	const parent = channel.parent;
 
-			if (parent && guildData.validChannels.includes(parent.id)) {
-				parent.messages
-					.fetch(channel.id)
-					.then(startMessage => {
-						if (startMessage) {
-							const threadAuthor = startMessage.author.id;
+	if (!parent || !guildData.validChannels.includes(parent.id))
+		return Promise.resolve("This channel is not a valid reputation gainable channel.");
 
-							if (interaction.user.id === threadAuthor) {
-								if (message.embeds.length > 0) {
-									const updatedEmbed = message.embeds[0];
-									updatedEmbed.setTitle("<:author_accepted:869447434089160710> Answer");
+	const startMessage = await parent.messages.fetch(channel.id);
 
-									message
-										.edit({ embeds: [updatedEmbed], components: message.components })
-										.then(() => {
-											return resolve("You have successfully accepted an answer.");
-										})
-										.catch((err: Error) => resolve(err.message));
-								} else {
-									return resolve("That is not a valid answer to accept.");
-								}
-							} else {
-								return resolve(
-									"You are not allowed to accept an answer for another member's question."
-								);
-							}
-						} else {
-							return resolve("Could not fetch start message. Please try again.");
-						}
-					})
-					.catch((err: Error) => resolve(err.message));
-			} else {
-				return resolve("This channel is not under valid reputation gainable channel.");
-			}
-		} else {
-			return resolve("This is not a valid location to convert a message to an answer.");
+	if (!startMessage) return Promise.resolve("Could not fetch start message. Please try again.");
+
+	const messageData = guildData.messageData.find(storedMessage => storedMessage.messageId === message.id);
+
+	const threadAuthor = startMessage.author.id;
+	// Fetch answer author, or assign to thread author to prevent potential rep manipulation
+	const answerAuthor = messageData ? messageData.posterId : threadAuthor;
+
+	if (interaction.user.id != threadAuthor)
+		return Promise.resolve("You are not allowed to accept an answer for another member's question.");
+
+	const answerEmbed = message.embeds[0];
+
+	if (!answerEmbed) return Promise.resolve("That is not a valid answer to accept.");
+
+	// TODO: Implement check for already accepted answers.
+	answerEmbed.setTitle("<:author_accepted:869447434089160710> Answer");
+
+	// TODO: Add +1 Rep and +1 Accepted answer to answerAuthor if not threadAuthor
+	if (answerAuthor != threadAuthor) {
+		const userData = (await fetchUserData(guildData.guildId, answerAuthor)).userData;
+
+		if (!userData)
+			return Promise.resolve(
+				`Failed to apply answer reputation to user. Please notify send a member of staff the following message: {${answerAuthor}:1:${message.id}}`
+			);
+
+		const channelData = userData.reputation.find(channel => channel.channelId === parent.id);
+		let currentChannelRep = 1;
+		if (channelData) {
+			currentChannelRep += channelData.reputation;
 		}
-	});
+
+		await updateUserData(guildData.guildId, answerAuthor, { acceptedAnswers: userData.acceptedAnswers + 1 });
+		await updateUserData(guildData.guildId, answerAuthor, {
+			channelId: parent.id,
+			newReputation: currentChannelRep,
+		});
+	}
+
+	await message.edit({ embeds: [answerEmbed], components: message.components }).catch(console.error.bind(console));
+
+	return Promise.resolve("NYI - Accept Answer");
 }
 
 export async function contextFlag(
@@ -297,20 +305,29 @@ export async function contextViewRep(
 			new MessageEmbed()
 				.setTitle(`Reputation for ${member.displayName}`)
 				.setDescription(`Total Reputation: ${calculateTotalRep(userData.reputation)}`)
-				.addFields(
-					userData.reputation.map(channelData => {
-						return {
-							name: channelMapping[channelData.channelId],
-							value: String(channelData.reputation),
-							inline: true,
-						};
-					})
+				.addField(
+					"\u200b",
+					userData.reputation
+						.map(channelData => {
+							return `${channelMapping[channelData.channelId]}: ${String(channelData.reputation)}`;
+						})
+						.join("\n"),
+					true
 				)
 				.setFooter(
-					`Lifetime Upvotes: ${userData.lifetime.upvotes ?? 0} | Downvotes: ${
-						userData.lifetime.downvotes ?? 0
-					}`
+					`Accepted Answers: ${userData.acceptedAnswers}\nLifetime Upvotes: ${
+						userData.lifetime.upvotes ?? 0
+					}\nLifetime Downvotes: ${userData.lifetime.downvotes ?? 0}`
 				),
+
+			/**
+				 * {
+					name: "\u200b",
+					value: ;
+					}).join("\n"),
+					inline: true
+				}
+				 */
 		],
 	});
 }
