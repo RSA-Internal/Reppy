@@ -14,6 +14,7 @@ export interface IUserData {
 	readonly reputation: IChannelData[];
 	readonly pool: IPoolData;
 	readonly lifetime: IPoolData;
+	readonly acceptedAnswers: number;
 }
 
 export interface IMessageData {
@@ -45,6 +46,7 @@ export default model<IGuildData>(
 					reputation: [{ channelId: String, reputation: Number }],
 					pool: { upvotes: Number, downvotes: Number },
 					lifetime: { upvotes: Number, downvotes: Number },
+					acceptedAnswers: Number,
 				},
 			],
 			index: true,

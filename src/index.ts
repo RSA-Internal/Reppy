@@ -170,8 +170,6 @@ function main(client: Client, dbUri: string) {
 	});
 
 	client.on("messageCreate", async message => {
-		console.log("Message received.");
-
 		const guild = message.guild;
 
 		if (!guild) return;
