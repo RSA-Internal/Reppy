@@ -34,6 +34,10 @@ interface IUpdateResult {
 	result: boolean;
 	message?: string;
 	repChange: number;
+	lifetimeChange?: {
+		upvote: number;
+		downvote: number;
+	};
 }
 
 export interface ReputationHolder {
@@ -77,6 +81,10 @@ function updateMessageData(
 				updatedMessages: returnData,
 				message: "Successfully removed upvote.",
 				repChange,
+				lifetimeChange: {
+					upvote: -1,
+					downvote: 0,
+				},
 			};
 		}
 
@@ -91,6 +99,10 @@ function updateMessageData(
 				updatedMessages: returnData,
 				message: "Successfully upvoted!",
 				repChange,
+				lifetimeChange: {
+					upvote: 1,
+					downvote: -1,
+				},
 			};
 		}
 
@@ -104,6 +116,10 @@ function updateMessageData(
 				updatedMessages: returnData,
 				message: "Successfully upvoted!",
 				repChange,
+				lifetimeChange: {
+					upvote: 1,
+					downvote: 0,
+				},
 			};
 		}
 	}
@@ -119,6 +135,10 @@ function updateMessageData(
 				updatedMessages: returnData,
 				message: "Successfully removed downvote.",
 				repChange,
+				lifetimeChange: {
+					upvote: 0,
+					downvote: -1,
+				},
 			};
 		}
 
@@ -133,6 +153,10 @@ function updateMessageData(
 				updatedMessages: returnData,
 				message: "Successfully downvoted!",
 				repChange,
+				lifetimeChange: {
+					upvote: -1,
+					downvote: 1,
+				},
 			};
 		}
 
@@ -146,6 +170,10 @@ function updateMessageData(
 				updatedMessages: returnData,
 				message: "Successfully downvoted!",
 				repChange,
+				lifetimeChange: {
+					upvote: 0,
+					downvote: 1,
+				},
 			};
 		}
 	}
@@ -281,13 +309,19 @@ export async function handleVote(
 			channelId: repData.channelId,
 			newReputation: oldReputation + updateResult.repChange,
 		});
-		const lifetime = userData.lifetime;
 
-		if (voteType === VoteStatus.UPVOTE) {
-			lifetime.upvotes += 1;
-		} else {
-			lifetime.downvotes += 1;
+		const lifetime = userData.lifetime;
+		let lifetimeUpdate = updateResult.lifetimeChange;
+
+		if (!lifetimeUpdate) {
+			lifetimeUpdate = {
+				upvote: voteType === VoteStatus.UPVOTE ? 1 : 0,
+				downvote: voteType === VoteStatus.DOWNVOTE ? 1 : 0,
+			};
 		}
+
+		lifetime.upvotes += lifetimeUpdate.upvote;
+		lifetime.downvotes += lifetimeUpdate.downvote;
 
 		await updateUserData(guildData.guildId, repData.memberId, {
 			lifetime,
