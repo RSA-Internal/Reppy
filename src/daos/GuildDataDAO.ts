@@ -18,16 +18,18 @@ export enum UserUpdateType {
 	REPUTATION,
 	POOL,
 	LIFETIME,
+	ACCEPTED_ANSWER,
 }
 
 export interface UserUpdateData {
-	[UserUpdateType.REPUTATION]: { channelId: string; reputationChange: number };
+	[UserUpdateType.REPUTATION]: { channelId: string; newReputation: number };
 	[UserUpdateType.POOL]: { pool: IPoolData };
 	[UserUpdateType.LIFETIME]: { lifetime: IPoolData };
+	[UserUpdateType.ACCEPTED_ANSWER]: { acceptedAnswers: number };
 }
 
 function isReputation(x: UserUpdateData[UserUpdateType]): x is UserUpdateData[UserUpdateType.REPUTATION] {
-	return "channelId" in x && "reputationChange" in x;
+	return "channelId" in x && "newReputation" in x;
 }
 
 function isPool(x: UserUpdateData[UserUpdateType]): x is UserUpdateData[UserUpdateType.POOL] {
@@ -36,6 +38,10 @@ function isPool(x: UserUpdateData[UserUpdateType]): x is UserUpdateData[UserUpda
 
 function isLifetime(x: UserUpdateData[UserUpdateType]): x is UserUpdateData[UserUpdateType.LIFETIME] {
 	return "lifetime" in x;
+}
+
+function isAcceptedAnswers(x: UserUpdateData[UserUpdateType]): x is UserUpdateData[UserUpdateType.ACCEPTED_ANSWER] {
+	return "acceptedAnswers" in x;
 }
 
 export function calculateTotalRep(channelData: IChannelData[]): number {
@@ -132,6 +138,7 @@ export async function createUserData(
 								upvotes: 0,
 								downvotes: 0,
 							},
+							acceptedAnswers: 0,
 						};
 
 						// update guild data in db
@@ -310,10 +317,9 @@ export async function updateUserData<T extends UserUpdateType>(
 
 	if (isReputation(updateData)) {
 		const newReputationData = userData.reputation.filter(channel => channel.channelId != updateData.channelId);
-		const oldChannelData = userData.reputation.find(channel => channel.channelId === updateData.channelId);
 		const newChannelData: IChannelData = {
 			channelId: updateData.channelId,
-			reputation: (oldChannelData != undefined ? oldChannelData.reputation : 0) + updateData.reputationChange,
+			reputation: updateData.newReputation,
 		};
 
 		newReputationData.push(newChannelData);
@@ -323,6 +329,7 @@ export async function updateUserData<T extends UserUpdateType>(
 			reputation: newReputationData,
 			pool: userData.pool,
 			lifetime: userData.lifetime,
+			acceptedAnswers: userData.acceptedAnswers,
 		};
 	} else if (isPool(updateData)) {
 		newUserData = {
@@ -330,6 +337,7 @@ export async function updateUserData<T extends UserUpdateType>(
 			reputation: userData.reputation,
 			pool: updateData.pool,
 			lifetime: userData.lifetime,
+			acceptedAnswers: userData.acceptedAnswers,
 		};
 	} else if (isLifetime(updateData)) {
 		newUserData = {
@@ -337,6 +345,15 @@ export async function updateUserData<T extends UserUpdateType>(
 			reputation: userData.reputation,
 			pool: userData.pool,
 			lifetime: updateData.lifetime,
+			acceptedAnswers: userData.acceptedAnswers,
+		};
+	} else if (isAcceptedAnswers(updateData)) {
+		newUserData = {
+			userId: userData.userId,
+			reputation: userData.reputation,
+			pool: userData.pool,
+			lifetime: userData.lifetime,
+			acceptedAnswers: updateData.acceptedAnswers,
 		};
 	} else {
 		return Promise.resolve({ result: false, message: "Failed to create newUserData.", guildData });

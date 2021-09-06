@@ -50,13 +50,6 @@ function verify(testName: string, asserts: AssertTest[]): boolean {
 	return isPassing;
 }
 
-async function resetDB(): Promise<void> {
-	console.log("Resetting DB");
-	await deleteGuildData("165202235226062848");
-	await deleteGuildData("848412523526488114");
-	console.log("Reset DB");
-}
-
 async function main(): Promise<void> {
 	let daoTest = await createGuildData("165202235226062848");
 	verify("createBaseGuildData", [
@@ -184,9 +177,9 @@ async function main(): Promise<void> {
 
 	daoTest = await updateUserData("848412523526488114", "454873852254617601", {
 		channelId: "871596364327448617",
-		reputationChange: 4,
+		newReputation: 14,
 	});
-	verify("updateUserDataGain4Rep", [
+	verify("updateUserDataSetRep14", [
 		{ name: "DAO Result", expectedValue: true, gotValue: daoTest.result },
 		{ name: "DAO Message", expectedValue: "Successfully updated userData.", gotValue: daoTest.message },
 		{ name: "DAO has guildData", expectedValue: true, gotValue: daoTest.guildData != undefined },
@@ -201,7 +194,7 @@ async function main(): Promise<void> {
 
 	daoTest = await updateUserData("-1", "454873852254617601", {
 		channelId: "871596364327448617",
-		reputationChange: 4,
+		newReputation: 4,
 	});
 	verify("updateUserDataNoGuild", [
 		{ name: "DAO Result", expectedValue: false, gotValue: daoTest.result },
@@ -212,7 +205,7 @@ async function main(): Promise<void> {
 
 	daoTest = await updateUserData("848412523526488114", "-1", {
 		channelId: "-1",
-		reputationChange: 4,
+		newReputation: 4,
 	});
 	verify("updateUserDataNoExist", [
 		{ name: "DAO Result", expectedValue: false, gotValue: daoTest.result },
@@ -328,8 +321,6 @@ async function main(): Promise<void> {
 	console.log(`TESTS: ${passed + failed}`);
 	console.log(`PASSED: ${passed}`);
 	console.log(`FAILED: ${failed}`);
-
-	await resetDB();
 
 	process.exit();
 }

@@ -33,7 +33,7 @@ interface IUpdateResult {
 	updatedMessages?: IMessageData[];
 	result: boolean;
 	message?: string;
-	repDelta: number;
+	repChange: number;
 }
 
 export interface ReputationHolder {
@@ -62,59 +62,99 @@ function updateMessageData(
 		return {
 			result: false,
 			message: "This is not a valid answer to vote on.",
-			repDelta: 0,
+			repChange: 0,
 		};
 	}
 
-	if (voteStatus === VoteStatus.UPVOTE && voteType === VoteStatus.UPVOTE) {
-		messageData.upvotes = messageData.upvotes.filter(upvote => upvote != userId);
-		repChange -= 1;
-		returnData.push(messageData);
-		return {
-			result: true,
-			updatedMessages: returnData,
-			message: "Successfully removed upvote",
-			repDelta: repChange,
-		};
+	if (voteType == VoteStatus.UPVOTE) {
+		// already upvoted
+		if (voteStatus === VoteStatus.UPVOTE) {
+			messageData.upvotes = messageData.upvotes.filter(upvote => upvote != userId);
+			repChange -= 1; // -1 for removal of upvote
+			returnData.push(messageData);
+			return {
+				result: true,
+				updatedMessages: returnData,
+				message: "Successfully removed upvote.",
+				repChange,
+			};
+		}
+
+		// adding upvote - downvote
+		if (voteStatus === VoteStatus.DOWNVOTE) {
+			messageData.downvotes = messageData.downvotes.filter(downvote => downvote != userId);
+			messageData.upvotes.push(userId);
+			repChange += 2; // +1 for removal of downvote, +1 for new upvote
+			returnData.push(messageData);
+			return {
+				result: true,
+				updatedMessages: returnData,
+				message: "Successfully upvoted!",
+				repChange,
+			};
+		}
+
+		// adding upvote - novote
+		if (voteStatus === VoteStatus.NOVOTE) {
+			messageData.upvotes.push(userId);
+			repChange += 1; // +1 for new upvote
+			returnData.push(messageData);
+			return {
+				result: true,
+				updatedMessages: returnData,
+				message: "Successfully upvoted!",
+				repChange,
+			};
+		}
 	}
 
-	if (voteStatus === VoteStatus.UPVOTE && voteType === VoteStatus.DOWNVOTE) {
-		messageData.upvotes = messageData.upvotes.filter(upvote => upvote != userId);
-		repChange -= 1;
-	}
+	if (voteType == VoteStatus.DOWNVOTE) {
+		// already downvoted
+		if (voteStatus === VoteStatus.DOWNVOTE) {
+			messageData.downvotes = messageData.downvotes.filter(downvote => downvote != userId);
+			repChange += 1; // +1 for removal of downvote
+			returnData.push(messageData);
+			return {
+				result: true,
+				updatedMessages: returnData,
+				message: "Successfully removed downvote.",
+				repChange,
+			};
+		}
 
-	if (voteStatus === VoteStatus.DOWNVOTE && voteType === VoteStatus.UPVOTE) {
-		messageData.downvotes = messageData.downvotes.filter(downvote => downvote != userId);
-		repChange += 1;
-	}
+		// adding downvote -- upvote
+		if (voteStatus === VoteStatus.UPVOTE) {
+			messageData.upvotes = messageData.upvotes.filter(upvote => upvote != userId);
+			messageData.downvotes.push(userId);
+			repChange -= 2; // -1 for removal of upvote, -1 for new downvote
+			returnData.push(messageData);
+			return {
+				result: true,
+				updatedMessages: returnData,
+				message: "Successfully downvoted!",
+				repChange,
+			};
+		}
 
-	if (voteStatus === VoteStatus.DOWNVOTE && voteType === VoteStatus.DOWNVOTE) {
-		messageData.downvotes = messageData.downvotes.filter(downvote => downvote != userId);
-		repChange += 1;
-		returnData.push(messageData);
-		return {
-			result: true,
-			updatedMessages: returnData,
-			message: "Successfully removed downvote",
-			repDelta: repChange,
-		};
+		// adding downvote - novote
+		if (voteStatus === VoteStatus.NOVOTE) {
+			messageData.downvotes.push(userId);
+			repChange -= 1; // -1 for new downvote
+			returnData.push(messageData);
+			return {
+				result: true,
+				updatedMessages: returnData,
+				message: "Successfully downvoted!",
+				repChange,
+			};
+		}
 	}
-
-	if (voteType === VoteStatus.UPVOTE) {
-		messageData.upvotes.push(userId);
-		repChange += 1;
-	} else {
-		messageData.downvotes.push(userId);
-		repChange -= 1;
-	}
-
-	returnData.push(messageData);
 
 	return {
-		result: true,
+		result: false,
 		updatedMessages: returnData,
-		message: `Successfully ${voteType === VoteStatus.UPVOTE ? "upvoted" : "downvoted"}`,
-		repDelta: repChange,
+		message: `Failed to cast vote.`,
+		repChange,
 	};
 }
 
@@ -126,6 +166,7 @@ export async function handleVote(
 	voteType: VoteStatus,
 	repData: ReputationHolder
 ): Promise<void> {
+	// Handle fetchOrCreate for UserData that is voting
 	let votingUserData = (await fetchUserData(guildData.guildId, interaction.user.id)).userData;
 
 	if (!votingUserData) {
@@ -142,6 +183,7 @@ export async function handleVote(
 		}
 	}
 
+	// Handle check of vote availabilty
 	const pool = votingUserData.pool;
 	const count = voteType === VoteStatus.UPVOTE ? pool.upvotes : pool.downvotes;
 
@@ -160,6 +202,7 @@ export async function handleVote(
 		pool.downvotes = pool.downvotes - 1;
 	}
 
+	// Find associated answer
 	const answerIdField = message.embeds[0].fields.find(field => field.name === "Answer ID");
 
 	if (!answerIdField) {
@@ -183,11 +226,12 @@ export async function handleVote(
 	}
 
 	await interaction.update({
-		content: `Processing ${voteType === VoteStatus.UPVOTE ? "upvoted" : "downvoted"}.`,
+		content: `Processing ${voteType === VoteStatus.UPVOTE ? "upvote" : "downvote"}.`,
 		embeds: [],
 		components: [],
 	});
 
+	// Update answer votes
 	const allMessageData = guildData.messageData;
 	const messageData = allMessageData.find(savedData => savedData.messageId === answerIdField.value);
 
@@ -217,18 +261,26 @@ export async function handleVote(
 		return;
 	}
 
+	// Update voting user UserData for daily votes
 	await updateUserData(guildData.guildId, interaction.user.id, { pool });
 
+	// fetchOrCreate UserData for Answering User
 	const userData = (await fetchUserData(guildData.guildId, repData.memberId)).userData;
 
 	if (!userData) {
-		await createUserData(guildData.guildId, repData.memberId, repData.channelId, updateResult.repDelta);
+		await createUserData(guildData.guildId, repData.memberId, repData.channelId, updateResult.repChange);
 	} else {
+		let oldReputation = 0;
+
+		const channelData = userData.reputation.find(channel => channel.channelId === repData.channelId);
+		if (channelData) {
+			oldReputation = channelData.reputation;
+		}
+
 		await updateUserData(guildData.guildId, repData.memberId, {
 			channelId: repData.channelId,
-			reputationChange: updateResult.repDelta,
+			newReputation: oldReputation + updateResult.repChange,
 		});
-
 		const lifetime = userData.lifetime;
 
 		if (voteType === VoteStatus.UPVOTE) {
@@ -242,6 +294,7 @@ export async function handleVote(
 		});
 	}
 
+	// Update global GuildData with new UserData
 	const updatedData = await updateGuildData(guild.id, undefined, undefined, updateResult.updatedMessages);
 	const channel = interaction.channel;
 	if (channel) await rerenderVotes(updatedData, channel, answerIdField.value);
