@@ -6,7 +6,7 @@ import {
 	MessageButton,
 	MessageEmbed,
 	TextBasedChannels,
-	WebhookEditMessageOptions,
+	WebhookEditMessageOptions
 } from "discord.js";
 import { calculateTotalRep, fetchUserData, updateGuildData } from "../daos/GuildDataDAO";
 import type { IGuildData, IMessageData } from "../models/guildData.model";
@@ -108,7 +108,7 @@ export async function contextConvertToQuestion(
 							name: message.content.substring(
 								0,
 								message.content.indexOf("?") || message.content.indexOf(".")
-							),
+							).substring(0, 50),
 							autoArchiveDuration: 1440,
 							reason: `contextConvertToQuestion by ${interaction.user.username}`,
 						})

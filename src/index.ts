@@ -186,7 +186,9 @@ function main(client: Client, dbUri: string) {
 		if (messageGrade.isQuestion) {
 			message
 				.startThread({
-					name: message.content.substring(0, message.content.indexOf("?") || message.content.indexOf(".")),
+					name: message.content
+						.substring(0, message.content.indexOf("?") || message.content.indexOf("."))
+						.substring(0, 50),
 					autoArchiveDuration: 1440,
 					reason: `contextConvertToQuestion by AutomatedCheck.`,
 				})
