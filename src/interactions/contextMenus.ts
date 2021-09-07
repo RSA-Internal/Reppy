@@ -50,6 +50,7 @@ export async function contextConvertToAnswer(
 										const newAnswerData: IMessageData = {
 											messageId: answerMessage.id,
 											posterId: message.author.id,
+											threadAnswered: "",
 											upvotes: [],
 											downvotes: [],
 										};
@@ -147,7 +148,9 @@ export async function contextAcceptAnswer(
 
 	const threadAuthor = startMessage.author.id;
 	// Fetch answer author, or assign to thread author to prevent potential rep manipulation
-	const answerAuthor = messageData ? messageData.posterId : threadAuthor;
+	if (!messageData) return Promise.resolve("Could not fetch answer data. Please try again.");
+
+	const answerAuthor = messageData.posterId;
 
 	if (interaction.user.id != threadAuthor)
 		return Promise.resolve("You are not allowed to accept an answer for another member's question.");
@@ -157,6 +160,20 @@ export async function contextAcceptAnswer(
 	if (!answerEmbed) return Promise.resolve("That is not a valid answer to accept.");
 
 	// TODO: Implement check for already accepted answers.
+	const threadAnswerMessage = guildData.messageData.find(
+		storedMessage => storedMessage.threadAnswered === channel.id
+	);
+
+	if (threadAnswerMessage) return Promise.resolve("This question already has an accepted answer.");
+
+	const newMessageData = guildData.messageData.filter(
+		storedMessage => storedMessage.messageId != messageData.messageId
+	);
+	messageData.threadAnswered = channel.id;
+	newMessageData.push(messageData);
+
+	await updateGuildData(guildData.guildId, undefined, undefined, newMessageData);
+
 	answerEmbed.setTitle("<:author_accepted:869447434089160710> Answer");
 
 	// TODO: Add +1 Rep and +1 Accepted answer to answerAuthor if not threadAuthor
@@ -183,7 +200,7 @@ export async function contextAcceptAnswer(
 
 	await message.edit({ embeds: [answerEmbed], components: message.components }).catch(console.error.bind(console));
 
-	return Promise.resolve("NYI - Accept Answer");
+	return Promise.resolve("Successfully accepted answer.");
 }
 
 export async function contextFlag(
@@ -319,15 +336,6 @@ export async function contextViewRep(
 						userData.lifetime.upvotes ?? 0
 					}\nLifetime Downvotes: ${userData.lifetime.downvotes ?? 0}`
 				),
-
-			/**
-				 * {
-					name: "\u200b",
-					value: ;
-					}).join("\n"),
-					inline: true
-				}
-				 */
 		],
 	});
 }

@@ -20,6 +20,7 @@ export interface IUserData {
 export interface IMessageData {
 	readonly messageId: Snowflake;
 	readonly posterId: Snowflake;
+	threadAnswered: Snowflake;
 	upvotes: Snowflake[];
 	downvotes: Snowflake[];
 }
@@ -54,7 +55,9 @@ export default model<IGuildData>(
 		},
 		reportChannelId: { type: String, default: "" },
 		messageData: {
-			type: [{ messageId: String, posterId: String, upvotes: [String], downvotes: [String] }],
+			type: [
+				{ messageId: String, posterId: String, threadAnswered: String, upvotes: [String], downvotes: [String] },
+			],
 			index: true,
 			default: [],
 		},
