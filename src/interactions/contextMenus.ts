@@ -200,6 +200,11 @@ export async function contextAcceptAnswer(
 
 	await message.edit({ embeds: [answerEmbed], components: message.components }).catch(console.error.bind(console));
 
+	// Archive thread to preserve integrity after accepted answer
+	await channel.send("**Locking thread to preserve integrity. [Accepted Answer]**").then(() => {
+		channel.setArchived(true, "answer accepted by asker.").catch(console.error.bind(console));
+	});
+
 	return Promise.resolve("Successfully accepted answer.");
 }
 
