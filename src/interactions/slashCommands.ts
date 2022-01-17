@@ -97,7 +97,7 @@ export async function slashCommandView(
 
 		if (left.length > 0) embedReply.addField("\u200b", left.join(""), true);
 		if (middle.length > 0) embedReply.addField("\u200b", middle.join(""), true);
-		if (middle.length > 0) embedReply.addField("\u200b", right.join(""), true);
+		if (right.length > 0) embedReply.addField("\u200b", right.join(""), true);
 
 		resolve({ embeds: [embedReply] });
 	});
