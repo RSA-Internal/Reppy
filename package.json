@@ -1,6 +1,6 @@
 {
 	"name": "reppy",
-	"version": "0.0.28",
+	"version": "0.0.34",
 	"description": "",
 	"main": "index.js",
 	"scripts": {

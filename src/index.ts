@@ -131,11 +131,13 @@ function main(client: Client, dbUri: string) {
 												.then(roles => {
 													roles.forEach(role => {
 														if (role.permissions.has(Permissions.FLAGS.MANAGE_GUILD)) {
-															permissibleRoles.push({
-																id: role.id,
-																type: "ROLE",
-																permission: true,
-															});
+															if (permissibleRoles.length < 10) {
+																permissibleRoles.push({
+																	id: role.id,
+																	type: "ROLE",
+																	permission: true,
+																});
+															}
 														}
 													});
 												})
@@ -183,6 +185,7 @@ function main(client: Client, dbUri: string) {
 		if (!guildData.validChannels.includes(message.channelId)) return;
 
 		const messageGrade = isMessageQuestion(DetectionType.MESSAGE, message.content);
+		console.log(`Score: ${messageGrade.score}`);
 		if (messageGrade.isQuestion) {
 			message
 				.startThread({
@@ -301,7 +304,12 @@ try {
 	}
 
 	client = new Client({
-		intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MEMBERS],
+		intents: [
+			Intents.FLAGS.GUILDS,
+			Intents.FLAGS.GUILD_MESSAGES,
+			Intents.FLAGS.GUILD_MEMBERS,
+			Intents.FLAGS.GUILD_MESSAGES,
+		],
 	});
 
 	if (client != undefined) {
