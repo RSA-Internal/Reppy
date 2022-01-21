@@ -14,13 +14,19 @@ public class MessageListener extends ListenerAdapter {
             System.out.printf("[PM] %s: %s\n", event.getAuthor().getName(),
                     event.getMessage().getContentDisplay());
         } else {
-            final Message MESSAGE = event.getMessage();
+            final Message message = event.getMessage();
 
-            final String AUTHOR_ID = event.getAuthor().getId();
-            final String MESSAGE_CONTENT = MESSAGE.getContentDisplay();
+            final String authorId = event.getAuthor().getId();
+            final String messageContent = message.getContentDisplay();
 
-            if (AUTHOR_ID.equals(SnowflakeConstants.BOT_OWNER_ID)) {
-                if (MESSAGE_CONTENT.equals("stop")) {
+            if (event.getChannel().getId().equals(SnowflakeConstants.ASK_QUESTION_CHANNEL_ID)) {
+                if (!authorId.equals(SnowflakeConstants.BOT_OWNER_ID)) {
+                    message.delete().queue();
+                }
+            }
+
+            if (authorId.equals(SnowflakeConstants.BOT_OWNER_ID)) {
+                if (messageContent.equals("r!stop")) {
                     event.getMessage().reply("Shutting down safely.").queue(success -> {
                         event.getJDA().shutdown();
                     });
