@@ -4,7 +4,7 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '6.0.0'
 }
 
-mainClassName = 'com.example.jda.Bot'
+mainClassName = 'panda.reppy.Start'
 version '1.0'
 sourceCompatibility = 1.8
 
