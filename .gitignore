@@ -82,12 +82,3 @@ nb-configuration.xml
 ## OS X
 ##############################
 .DS_Store
-
-##############################
-## Other Files
-##############################
-build.gradle
-/gradle
-gradlew.bat
-gradlew
-settings.gradle

@@ -1,0 +1,26 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '6.0.0'
+}
+
+mainClassName = 'com.example.jda.Bot'
+version '1.0'
+sourceCompatibility = 1.8
+
+repositories {
+    maven {
+        name 'm2-dv8tion'
+        url 'https://m2.dv8tion.net/releases'
+    }
+    mavenCentral()
+    jcenter()
+}
+
+dependencies {
+    implementation 'net.dv8tion:JDA:5.0.0-alpha.4'
+    implementation 'com.jagrosh:jda-utilities:3.0.5'
+    implementation 'ch.qos.logback:logback-classic:1.2.8'
+}
+
+compileJava.options.encoding = 'UTF-8'
