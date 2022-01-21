@@ -139,7 +139,6 @@ public class PostQuestion extends BaseCommand {
                     && e.getMessageIdLong() != lastMessage,
             e -> {
                 if (CANCEL_WORDS.contains(e.getMessage().getContentRaw().toLowerCase())) {
-                    thread.delete().queue();
                     current.remove(event.getUser().getId());
                     cleanMessages(event, thread);
                     e.getMessage().delete().queue();

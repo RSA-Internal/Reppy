@@ -65,7 +65,7 @@ public class Bot {
             // bandwidth if chunking is disabled.
             .setLargeThreshold(50)
             // Set Activity to display the version.
-            .setActivity(Activity.playing("v0.1.0_alpha"));
+            .setActivity(Activity.playing("v0.1.1_beta"));
     }
 
     private static void initSlashCommands(SlashCommandListener listener) {
