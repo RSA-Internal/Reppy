@@ -8,7 +8,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
-import panda.reppy.database.cache.ModelCache;
+import panda.reppy.database.ModelDao;
 import panda.reppy.database.models.DatabaseModel;
 
 import java.net.UnknownHostException;
@@ -34,7 +34,7 @@ public class BotMongoClient {
         getMongoClient();
 
         if (mongoClient != null) {
-            new ModelCache();
+            new ModelDao();
         }
     }
 

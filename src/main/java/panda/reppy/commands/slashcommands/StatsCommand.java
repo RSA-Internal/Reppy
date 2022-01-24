@@ -6,7 +6,7 @@ import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import panda.reppy.commands.BaseCommand;
-import panda.reppy.database.cache.ModelCache;
+import panda.reppy.database.ModelDao;
 import panda.reppy.database.models.DatabaseModel;
 
 import java.util.List;
@@ -38,15 +38,15 @@ public class StatsCommand extends BaseCommand {
                 .addField("Reputation", Integer.toString(0), false);
 
         List<DatabaseModel> questionModels =
-                ModelCache.retrieveModelsByField("questions", "authorId", requestedId);
+                ModelDao.retrieveModelsByField("questions", "authorId", requestedId);
 
         List<DatabaseModel> answerModels =
-                ModelCache.retrieveModelsByField("answers", "authorId", requestedId);
+                ModelDao.retrieveModelsByField("answers", "authorId", requestedId);
 
         List<DatabaseModel> receivedVoteModels =
-                ModelCache.retrieveModelsByField("votes", "receiverId", requestedId);
+                ModelDao.retrieveModelsByField("votes", "receiverId", requestedId);
         List<DatabaseModel> givenVoteModels =
-                ModelCache.retrieveModelsByField("votes", "authorId", requestedId);
+                ModelDao.retrieveModelsByField("votes", "authorId", requestedId);
 
         Stream<DatabaseModel> acceptedAnswerModels =
                 answerModels.stream().filter(DatabaseModel::getAccepted);

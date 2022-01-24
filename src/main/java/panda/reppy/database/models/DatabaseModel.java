@@ -6,7 +6,6 @@ public class DatabaseModel {
 
     private ObjectId id;
     private String collectionName;
-    private String modelType;
 
     // Shared
     private String threadId;
@@ -37,14 +36,6 @@ public class DatabaseModel {
 
     public void setCollectionName(String collectionName) {
         this.collectionName = collectionName;
-    }
-
-    public String getModelType() {
-        return modelType;
-    }
-
-    public void setModelType(String modelType) {
-        this.modelType = modelType;
     }
 
     public String getThreadId() {
