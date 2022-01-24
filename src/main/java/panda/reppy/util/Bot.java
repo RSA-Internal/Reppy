@@ -35,28 +35,6 @@ public class Bot {
         configureMemoryUsage(builder);
         try {
             connectDb(dbURI);
-
-            // Create test question
-            DatabaseModel upvoteModel = new DatabaseModel();
-            upvoteModel.setThreadId("934564157720772688");
-            upvoteModel.setPostId("934564157720772688");
-            upvoteModel.setVoteType(true);
-            upvoteModel.setReceiverId("169208961533345792");
-            upvoteModel.setAuthorId("773804899032367104");
-            upvoteModel.setCollectionName("votes");
-            upvoteModel.setModelType("votes");
-            upvoteModel.setId(new ObjectId());
-
-            DatabaseModel questionModel = new DatabaseModel();
-            questionModel.setAuthorId("169208961533345792");
-            questionModel.setThreadId("934564157720772688");
-            questionModel.setTitle("Data Design");
-            questionModel.setCollectionName("questions");
-            questionModel.setModelType("questions");
-            questionModel.setId(new ObjectId());
-
-            ModelCache.saveModelData(upvoteModel, true);
-            ModelCache.saveModelData(questionModel, true);
         } catch (UnknownHostException uhe) {
             // TODO Setup retries
             System.out.println("Failed to connect to DB.");
