@@ -1,7 +1,6 @@
 package panda.reppy.util.constants;
 
 import panda.reppy.flags.CommandCondition;
-import panda.reppy.flags.QuestionState;
 import panda.reppy.flags.SnowflakeType;
 
 public class CommandConditionConstants {

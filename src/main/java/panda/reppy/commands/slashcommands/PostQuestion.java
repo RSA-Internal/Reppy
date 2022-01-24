@@ -94,7 +94,6 @@ public class PostQuestion extends BaseCommand {
         wait(event, thread, lastMessage, e -> {
             Message message = e.getMessage();
             String query = message.getContentRaw();
-            User user = message.getAuthor();
 
             thread.sendMessage("Great, " + event.getMember().getAsMention()
                    + ". Please post any code that is relevant to your issue. If you do not have any code, type `skip`.")
@@ -107,7 +106,6 @@ public class PostQuestion extends BaseCommand {
         wait(event, thread, lastMessage, e -> {
             Message message = e.getMessage();
             String query = message.getContentRaw();
-            User user = message.getAuthor();
 
             thread.sendMessage("Awesome job, " + event.getMember().getAsMention()
                     + "! Give me a few moments, and your question will be posted.")
@@ -123,9 +121,7 @@ public class PostQuestion extends BaseCommand {
         assert channel != null;
         channel.createThreadChannel(title).queue(postedThread -> {
             postedThread.sendMessage("**Question posted by: " + event.getMember().getAsMention()
-                    + "**\n\n" + body).queue(message -> {
-                        postedThread.pinMessageById(message.getId()).queue();
-            });
+                    + "**\n\n" + body).queue(message -> postedThread.pinMessageById(message.getId()).queue());
             if (!codeblocks.equals("skip")) {
                 postedThread.sendMessage(codeblocks).queue();
             }
