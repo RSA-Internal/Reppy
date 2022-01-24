@@ -281,9 +281,8 @@ public class PostQuestion extends BaseCommand {
                     cleanMessages(event, thread);
                     break;
                 default:
-                    thread.sendMessage("An invalid option was provided. Please select from one of the following:\n"
-                            + generateThreadStatus(event.getMember().getId()))
-                            .queue();
+                    thread.sendMessage(String.format("%s is not a valid option. Please try `title`, `body`, " +
+                                    "`codeblock`, `output`, `done`, or `quit`.", content)).queue();
                     waitForResponse(event, thread, message.getIdLong());
                     break;
             }
