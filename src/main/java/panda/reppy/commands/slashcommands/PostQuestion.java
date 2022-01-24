@@ -284,6 +284,7 @@ public class PostQuestion extends BaseCommand {
                     thread.sendMessage("An invalid option was provided. Please select from one of the following:\n"
                             + generateThreadStatus(event.getMember().getId()))
                             .queue();
+                    waitForResponse(event, thread, message.getIdLong());
                     break;
             }
         });
