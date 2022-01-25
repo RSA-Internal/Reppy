@@ -1,5 +1,6 @@
 package panda.reppy.commands.slashcommands;
 
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -9,6 +10,8 @@ import panda.reppy.entities.MessageWaiter;
 import panda.reppy.entities.QuestionBuilder;
 import panda.reppy.util.constants.SnowflakeConstants;
 
+import java.awt.*;
+import java.util.List;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -80,212 +83,139 @@ public class PostQuestion extends BaseCommand {
                 .createThreadChannel(String.format("Question Building for %s", member.getEffectiveName()), true)
                 .queue(thread -> {
                     thread.addThreadMember(member).queue();
-                    thread.sendMessage(member.getAsMention() + ", Welcome to your personal Question Builder.")
+                    thread.sendMessage(member.getAsMention() + ", Welcome to your personal Question Builder.\n" +
+                                    "If at any point in time, you want to quit building, say `quit`.")
                             .queue();
-                    waitForResponse(event, thread, event.getIdLong());
+                    handleTitle(event, thread, event.getIdLong(), null);
                 });
 
         event.reply("Question posted.").queue();
         return true;
     }
 
-    private String formatStatus(String value) {
-        if (value != null) {
-            return "[ set ]";
-        }
-        return "[unset]";
+    private MessageEmbed generateStagedEmbed(String stage, String message, boolean isPrompt) {
+        EmbedBuilder builder = new EmbedBuilder()
+                .setTitle(stage)
+                .addField("\u200b", message, true)
+                .setColor(isPrompt ? Color.RED : new Color(32, 209, 181))
+                .setFooter("Reply `quit` to stop.");
+
+        return builder.build();
     }
 
-    private String generateThreadStatus(String memberId) {
-        QuestionBuilder questionBuilder = builderMap.get(memberId);
-
-        String status = String.format(
-                "Reply with any of the fields below to begin.\n\n" +
-                "- %s Title*\n" +
-                "- %s Body*\n" +
-                "- %s Codeblock\n" +
-                "- %s Output\n\n" +
-                "Reply `done` when you are finished building your question.\n" +
-                "Reply `quit` when you no longer want to build a question.",
-                formatStatus(questionBuilder.getTitle()),
-                formatStatus(questionBuilder.getBody()),
-                formatStatus(questionBuilder.getCodeblock()),
-                formatStatus(questionBuilder.getOutput())
-        );
-
-        return status;
-    }
-
-    private void handleTitle(SlashCommandEvent event, ThreadChannel thread, long lastMessage) {
+    private void handleTitle(SlashCommandEvent event, ThreadChannel thread, long lastMessage, String prompt) {
         QuestionBuilder questionBuilder = builderMap.get(event.getMember().getId());
-        String title = questionBuilder.getTitle();
-        if (title != null) {
-            thread.sendMessage("You currently have a title set.\n" +
-                            "Title: " + title + "\n\n" +
-                            "If you do not want to override your current title, please reply with `back`.")
-                    .queue();
-        } else {
-            thread.sendMessage("Please provide what the title of your question should be.").queue();
+        String toSend = "Please provide what the title of your question should be.\n" +
+                "A good question title is short and to the point.";
+        if (prompt != null) {
+            toSend = prompt;
         }
+
+        thread.sendMessageEmbeds(generateStagedEmbed("Title", toSend, prompt != null)).queue();
 
         wait(event, thread, lastMessage, e -> {
             Message message = e.getMessage();
             String content = message.getContentRaw();
 
-            if (content.equalsIgnoreCase("back")) {
-                waitForResponse(event, thread, message.getIdLong());
+            if (content.equalsIgnoreCase("quit")) {
+                cleanMessages(event, thread);
+            }
+
+            if (content.split(" ").length < 6) {
+                String newPrompt = String.format("Your title was not descriptive enough, please try a better title.\n" +
+                        "Title: %s", content);
+                handleTitle(event, thread, lastMessage, newPrompt);
+                return;
             }
 
             questionBuilder.setTitle(content);
-            waitForResponse(event, thread, message.getIdLong());
+            handleBody(event, thread, message.getIdLong(), null);
         });
     }
 
-    private void handleBody(SlashCommandEvent event, ThreadChannel thread, long lastMessage) {
+    private void handleBody(SlashCommandEvent event, ThreadChannel thread, long lastMessage, String prompt) {
         QuestionBuilder questionBuilder = builderMap.get(event.getMember().getId());
-        String body = questionBuilder.getBody();
-        if (body != null) {
-            thread.sendMessage("You currently have a body set.\n" +
-                            "Body: " + body + "\n\n" +
-                            "If you do not want to override your current body, please reply with `back`.")
-                    .queue();
-        } else {
-            thread.sendMessage("Please provide what the body of your question should be.").queue();
+        String toSend = "Please provide what the body of your question should be.\n" +
+                "A good question body is descriptive and clarifies what your end goal is.";
+        if (prompt != null) {
+            toSend = prompt;
         }
+
+        thread.sendMessageEmbeds(generateStagedEmbed("Body", toSend, prompt != null)).queue();
 
         wait(event, thread, lastMessage, e -> {
             Message message = e.getMessage();
             String content = message.getContentRaw();
 
-            if (content.equalsIgnoreCase("back")) {
-                waitForResponse(event, thread, message.getIdLong());
+            if (content.equalsIgnoreCase("quit")) {
+                cleanMessages(event, thread);
+            }
+
+            if (content.split(" ").length < 25) {
+                String newPrompt = String.format("Your body was not descriptive enough, please provide more details.\n" +
+                        "```\n%s\n```", content);
+                handleBody(event, thread, lastMessage, newPrompt);
+                return;
             }
 
             questionBuilder.setBody(content);
-            waitForResponse(event, thread, message.getIdLong());
+            handleCodeblock(event, thread, message.getIdLong());
         });
     }
 
     private void handleCodeblock(SlashCommandEvent event, ThreadChannel thread, long lastMessage) {
         QuestionBuilder questionBuilder = builderMap.get(event.getMember().getId());
-        String codeblock = questionBuilder.getCodeblock();
-        if (codeblock != null) {
-            thread.sendMessage("You currently have a codeblock set.\n" +
-                            "Codeblock: " + codeblock + "\n\n" +
-                            "If you do not want to override your current codeblock, please reply with `back`.")
-                    .queue();
-        } else {
-            thread.sendMessage("Please provide what the codeblock of your question should be.").queue();
-        }
+        String toSend = "Please provide any codeblocks relevant to your question.\n" +
+                "If you do not have any code to provide, reply with `skip`.";
+
+        thread.sendMessageEmbeds(generateStagedEmbed("Codeblock", toSend, false)).queue();
 
         wait(event, thread, lastMessage, e -> {
             Message message = e.getMessage();
             String content = message.getContentRaw();
 
-            if (content.equalsIgnoreCase("back")) {
-                waitForResponse(event, thread, message.getIdLong());
+            if (content.equalsIgnoreCase("quit")) {
+                cleanMessages(event, thread);
             }
 
-            if (content.contains("```lua")) content = content.replace("```lua", "");
-            if (content.contains("`")) content = content.replaceAll("`", "");
+            if (!content.equalsIgnoreCase("skip")) {
+                if (content.contains("```lua")) content = content.replace("```lua", "");
+                if (content.contains("`")) content = content.replaceAll("`", "");
 
-            content = "```lua\n" + content + "\n```";
+                content = "```lua\n" + content + "\n```";
 
-            questionBuilder.setCodeblock(content);
-            waitForResponse(event, thread, message.getIdLong());
+                questionBuilder.setCodeblock(content);
+            }
+
+            handleOutput(event, thread, message.getIdLong());
         });
     }
 
     private void handleOutput(SlashCommandEvent event, ThreadChannel thread, long lastMessage) {
         QuestionBuilder questionBuilder = builderMap.get(event.getMember().getId());
-        String output = questionBuilder.getOutput();
-        if (output != null) {
-            thread.sendMessage("You currently have an output log set.\n" +
-                            "Output: " + output + "\n\n" +
-                            "If you do not want to override your current output, please reply with `back`.")
-                    .queue();
-        } else {
-            thread.sendMessage("Please provide what the output of your question should be.").queue();
-        }
+
+        String toSend = "Please provide any output relevant to your question.\n" +
+                "If you do not have any output to provide, reply with `skip`.";
+
+        thread.sendMessageEmbeds(generateStagedEmbed("Output", toSend, false)).queue();
 
         wait(event, thread, lastMessage, e -> {
             Message message = e.getMessage();
             String content = message.getContentRaw();
 
-            if (content.equalsIgnoreCase("back")) {
-                waitForResponse(event, thread, message.getIdLong());
+            if (content.equalsIgnoreCase("quit")) {
+                cleanMessages(event, thread);
             }
 
-            if (content.contains("`")) content = content.replaceAll("`", "");
+            if (!content.equalsIgnoreCase("skip")) {
+                if (content.contains("`")) content = content.replaceAll("`", "");
 
-            content = "```\n" + content + "\n```";
+                content = "```\n" + content + "\n```";
 
-            questionBuilder.setOutput(content);
-            waitForResponse(event, thread, message.getIdLong());
-        });
-    }
-
-    private void waitForResponse(SlashCommandEvent event, ThreadChannel thread, long lastMessage) {
-        thread.sendMessage(generateThreadStatus(event.getMember().getId())).queue();
-        wait(event, thread, lastMessage, e -> {
-            Message message = e.getMessage();
-            String content = message.getContentRaw().toLowerCase();
-
-            switch(content) {
-                case "title":
-                    handleTitle(event, thread, message.getIdLong());
-                    break;
-                case "body":
-                    handleBody(event, thread, message.getIdLong());
-                    break;
-                case "codeblock":
-                    handleCodeblock(event, thread, message.getIdLong());
-                    break;
-                case "output":
-                    handleOutput(event, thread, message.getIdLong());
-                    break;
-                case "done":
-                    // TODO Implement checks on Title and Body
-                    QuestionBuilder builder = builderMap.get(event.getMember().getId());
-                    String title = builder.getTitle();
-                    String body = builder.getBody();
-                    boolean complete = true;
-
-
-                    if (title == null) {
-                        complete = false;
-                        thread.sendMessage("Title is unset, please set the title of your question.").queue();
-                    } else if (title.split(" ").length < 6) {
-                        complete = false;
-                        thread.sendMessage("Title was not descriptive enough, please try a better title.").queue();
-                    }
-
-                    if (body == null) {
-                        complete = false;
-                        thread.sendMessage("Body is unset, please set the body of your question.").queue();
-                    } else if (body.split(" ").length < 25) {
-                        complete = false;
-                        thread.sendMessage("There is not enough content in your question, please provide more " +
-                                        "details.")
-                                .queue();
-                    }
-
-                    if (!complete) {
-                        waitForResponse(event, thread, message.getIdLong());
-                    } else {
-                        postQuestion(event, thread);
-                    }
-
-                    break;
-                case "quit":
-                    cleanMessages(event, thread);
-                    break;
-                default:
-                    thread.sendMessage(String.format("%s is not a valid option. Please try `title`, `body`, " +
-                                    "`codeblock`, `output`, `done`, or `quit`.", content)).queue();
-                    waitForResponse(event, thread, message.getIdLong());
-                    break;
+                questionBuilder.setOutput(content);
             }
+
+            postQuestion(event, thread);
         });
     }
 
