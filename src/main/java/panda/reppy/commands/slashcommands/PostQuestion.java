@@ -40,6 +40,11 @@ public class PostQuestion extends BaseCommand {
 
         final Member member = event.getMember();
 
+        if (member == null) {
+            event.reply("Failed to fetch member from event.").queue();
+            return false;
+        }
+
         final String memberId = member.getId();
 
         if (current.contains(memberId)) {
@@ -62,20 +67,6 @@ public class PostQuestion extends BaseCommand {
             return false;
         }
 
-        // Check for previous questions with similar titles
-        // TODO Implement similarity check on titles
-//        List<ThreadChannel> threads = threadChannel.getThreadChannels();
-//        for (ThreadChannel thread : threads) {
-//            // TODO - Check for similar instead of exact.
-//            if (thread.getName().equals(title)) {
-//                // - Reply with any matches and return
-//                event.reply("Found matching channel here <#" + thread.getId() + ">.")
-//                        .setEphemeral(true).queue(response ->
-//                                response.deleteOriginal().queueAfter(30, TimeUnit.SECONDS));
-//                return true;
-//            }
-//        }
-
         current.add(memberId);
         builderMap.put(memberId, new QuestionBuilder(memberId));
 
@@ -86,7 +77,7 @@ public class PostQuestion extends BaseCommand {
                     thread.sendMessage(member.getAsMention() + ", Welcome to your personal Question Builder.\n" +
                                     "If at any point in time, you want to quit building, say `quit`.")
                             .queue();
-                    handleTitle(event, thread, event.getIdLong(), null);
+                    handleTitle(event, member, thread, event.getIdLong(), null);
                 });
 
         event.reply("Question posted.").queue();
@@ -103,8 +94,8 @@ public class PostQuestion extends BaseCommand {
         return builder.build();
     }
 
-    private void handleTitle(SlashCommandEvent event, ThreadChannel thread, long lastMessage, String prompt) {
-        QuestionBuilder questionBuilder = builderMap.get(event.getMember().getId());
+    private void handleTitle(SlashCommandEvent event, Member member, ThreadChannel thread, long lastMessage, String prompt) {
+        QuestionBuilder questionBuilder = builderMap.get(member.getId());
         String toSend = "Please provide what the title of your question should be.\n" +
                 "A good question title is short and to the point.";
         if (prompt != null) {
@@ -113,7 +104,7 @@ public class PostQuestion extends BaseCommand {
 
         thread.sendMessageEmbeds(generateStagedEmbed("Title", toSend, prompt != null)).queue();
 
-        wait(event, thread, lastMessage, e -> {
+        wait(event, member, thread, lastMessage, e -> {
             Message message = e.getMessage();
             String content = message.getContentRaw();
 
@@ -121,20 +112,22 @@ public class PostQuestion extends BaseCommand {
                 cleanMessages(event, thread);
             }
 
+            // TODO Implement similarity check on titles
+            // TODO - Check for similar instead of exact.
             if (content.split(" ").length < 6) {
                 String newPrompt = String.format("Your title was not descriptive enough, please try a better title.\n" +
                         "Title: %s", content);
-                handleTitle(event, thread, lastMessage, newPrompt);
+                handleTitle(event, member, thread, lastMessage, newPrompt);
                 return;
             }
 
             questionBuilder.setTitle(content);
-            handleBody(event, thread, message.getIdLong(), null);
+            handleBody(event, member, thread, message.getIdLong(), null);
         });
     }
 
-    private void handleBody(SlashCommandEvent event, ThreadChannel thread, long lastMessage, String prompt) {
-        QuestionBuilder questionBuilder = builderMap.get(event.getMember().getId());
+    private void handleBody(SlashCommandEvent event, Member member, ThreadChannel thread, long lastMessage, String prompt) {
+        QuestionBuilder questionBuilder = builderMap.get(member.getId());
         String toSend = "Please provide what the body of your question should be.\n" +
                 "A good question body is descriptive and clarifies what your end goal is.";
         if (prompt != null) {
@@ -143,7 +136,7 @@ public class PostQuestion extends BaseCommand {
 
         thread.sendMessageEmbeds(generateStagedEmbed("Body", toSend, prompt != null)).queue();
 
-        wait(event, thread, lastMessage, e -> {
+        wait(event, member, thread, lastMessage, e -> {
             Message message = e.getMessage();
             String content = message.getContentRaw();
 
@@ -152,25 +145,25 @@ public class PostQuestion extends BaseCommand {
             }
 
             if (content.split(" ").length < 25) {
-                String newPrompt = String.format("Your body was not descriptive enough, please provide more details.\n" +
-                        "```\n%s\n```", content);
-                handleBody(event, thread, lastMessage, newPrompt);
+                String newPrompt = String.format("Your body was not descriptive enough, please provide more details.%n" +
+                        "```%n%s%n```", content);
+                handleBody(event, member, thread, lastMessage, newPrompt);
                 return;
             }
 
             questionBuilder.setBody(content);
-            handleCodeblock(event, thread, message.getIdLong());
+            handleCodeblock(event, member, thread, message.getIdLong());
         });
     }
 
-    private void handleCodeblock(SlashCommandEvent event, ThreadChannel thread, long lastMessage) {
-        QuestionBuilder questionBuilder = builderMap.get(event.getMember().getId());
+    private void handleCodeblock(SlashCommandEvent event, Member member, ThreadChannel thread, long lastMessage) {
+        QuestionBuilder questionBuilder = builderMap.get(member.getId());
         String toSend = "Please provide any codeblocks relevant to your question.\n" +
                 "If you do not have any code to provide, reply with `skip`.";
 
         thread.sendMessageEmbeds(generateStagedEmbed("Codeblock", toSend, false)).queue();
 
-        wait(event, thread, lastMessage, e -> {
+        wait(event, member, thread, lastMessage, e -> {
             Message message = e.getMessage();
             String content = message.getContentRaw();
 
@@ -187,19 +180,19 @@ public class PostQuestion extends BaseCommand {
                 questionBuilder.setCodeblock(content);
             }
 
-            handleOutput(event, thread, message.getIdLong());
+            handleOutput(event, member, thread, message.getIdLong());
         });
     }
 
-    private void handleOutput(SlashCommandEvent event, ThreadChannel thread, long lastMessage) {
-        QuestionBuilder questionBuilder = builderMap.get(event.getMember().getId());
+    private void handleOutput(SlashCommandEvent event, Member member, ThreadChannel thread, long lastMessage) {
+        QuestionBuilder questionBuilder = builderMap.get(member.getId());
 
         String toSend = "Please provide any output relevant to your question.\n" +
                 "If you do not have any output to provide, reply with `skip`.";
 
         thread.sendMessageEmbeds(generateStagedEmbed("Output", toSend, false)).queue();
 
-        wait(event, thread, lastMessage, e -> {
+        wait(event, member, thread, lastMessage, e -> {
             Message message = e.getMessage();
             String content = message.getContentRaw();
 
@@ -215,18 +208,26 @@ public class PostQuestion extends BaseCommand {
                 questionBuilder.setOutput(content);
             }
 
-            postQuestion(event, thread);
+            postQuestion(event, member, thread);
         });
     }
 
-    private void postQuestion(SlashCommandEvent event, ThreadChannel thread) {
+    private void postQuestion(SlashCommandEvent event, Member member, ThreadChannel thread) {
         Guild guild = event.getGuild();
+        if (guild == null) {
+            event.reply("Failed to fetch guild, **question did not get posted**.").queue();
+            return;
+        }
         TextChannel channel = guild.getTextChannelById(SnowflakeConstants.THREAD_CHANNEL_ID);
-        Member member = event.getMember();
+        if (channel == null) {
+            event.reply("Failed to fetch post channel, **question did not get posted**.").queue();
+            return;
+        }
+
         QuestionBuilder builder = builderMap.get(member.getId());
 
         channel.createThreadChannel(builder.getTitle()).queue(postedThread -> {
-            postedThread.sendMessage("**Question posted by: " + event.getMember().getAsMention() + "**\n\n" +
+            postedThread.sendMessage("**Question posted by: " + member.getAsMention() + "**\n\n" +
                     builder.getBody()).queue(message -> postedThread.pinMessageById(message.getId()).queue());
             if (builder.getCodeblock() != null) {
                 postedThread.sendMessage(builder.getCodeblock()).queue();
@@ -240,8 +241,15 @@ public class PostQuestion extends BaseCommand {
         });
     }
 
-    private void wait(SlashCommandEvent event, ThreadChannel thread, long lastMessage, Consumer<MessageReceivedEvent> action) {
-        getWaiter(event).waitForGuildMessageReceived(
+    private void wait(SlashCommandEvent event, Member member, ThreadChannel thread, long lastMessage, Consumer<MessageReceivedEvent> action) {
+        MessageWaiter waiter = getWaiter(event);
+
+        if (waiter == null) {
+            event.reply("Failed to bind `MessageWaiter`.").queue();
+            return;
+        }
+
+        waiter.waitForGuildMessageReceived(
             e -> e.getAuthor().equals(event.getUser()) && e.getChannel().equals(thread)
                     && e.getMessageIdLong() != lastMessage,
             e -> {
@@ -252,13 +260,18 @@ public class PostQuestion extends BaseCommand {
                     return;
                 }
                 action.accept(e);
-            }, 5, TimeUnit.MINUTES, new Timeout(event, thread));
+            }, 5, TimeUnit.MINUTES, new Timeout(event, member, thread));
     }
 
     private void cleanMessages(SlashCommandEvent event, ThreadChannel thread) {
         String userId = event.getUser().getId();
+        Guild guild = event.getGuild();
+        if (guild == null) {
+            event.reply("Failed to fetch guild, **builder not cleaned**.").queue();
+            return;
+        }
 
-        if (thread != null && event.getGuild().getThreadChannelById(thread.getId()) != null) {
+        if (thread != null && guild.getThreadChannelById(thread.getId()) != null) {
             thread.delete().queue();
         }
 
@@ -276,12 +289,14 @@ public class PostQuestion extends BaseCommand {
     {
         private final SlashCommandEvent event;
         private final ThreadChannel thread;
+        private final Member member;
         private boolean ran = false;
 
-        private Timeout(SlashCommandEvent event, ThreadChannel thread)
+        private Timeout(SlashCommandEvent event, Member member, ThreadChannel thread)
         {
             this.event = event;
             this.thread = thread;
+            this.member = member;
         }
 
         @Override
@@ -291,7 +306,7 @@ public class PostQuestion extends BaseCommand {
                 return;
             ran = true;
             thread.sendMessage("Uh oh! You took longer than 5 minutes to respond, "
-                    + event.getMember().getAsMention() + "!").queue();
+                    + member.getAsMention() + "!").queue();
             current.remove(event.getUser().getId());
             cleanMessages(event, thread);
         }

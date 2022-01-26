@@ -3,6 +3,7 @@ package panda.reppy.entities;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.EventListener;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -21,10 +22,10 @@ import java.util.stream.Stream;
 public class MessageWaiter implements EventListener
 {
     private final Set<WaitingEvent> set = new HashSet<>();
-    private final ScheduledExecutorService threadpool = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService threadPool = Executors.newSingleThreadScheduledExecutor();
 
     @Override
-    public void onEvent(GenericEvent event)
+    public void onEvent(@NotNull GenericEvent event)
     {
         if(event instanceof MessageReceivedEvent)
             onGuildMessageReceived((MessageReceivedEvent) event);
@@ -38,7 +39,7 @@ public class MessageWaiter implements EventListener
 
         if(timeout > 0 && unit != null)
         {
-            threadpool.schedule(() ->
+            threadPool.schedule(() ->
             {
                 if(set.remove(we) && timeoutAction != null)
                     timeoutAction.run();

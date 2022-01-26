@@ -24,18 +24,31 @@ public class StatsCommand extends BaseCommand {
     public boolean execute(SlashCommandEvent event) {
         List<OptionMapping> options = event.getOptions();
         Member requester = event.getMember();
+        if (requester == null) {
+            event.reply("Failed to fetch member.").queue();
+            return false;
+        }
+
         Member requested = requester;
         String requestedId = requested.getId();
 
         if (options.size() > 0) {
             requested = options.get(0).getAsMember();
-            requestedId = requested.getId();
+            if (requested != null) {
+                requestedId = requested.getId();
+            }
         }
 
-        EmbedBuilder builder = new EmbedBuilder()
-                .setTitle(String.format("Stats for %s", requested.getEffectiveName()))
-                .setAuthor(requester.getEffectiveName())
-                .addField("Reputation", Integer.toString(0), false);
+        EmbedBuilder builder;
+        if (requested != null) {
+            builder = new EmbedBuilder()
+                    .setTitle(String.format("Stats for %s", requested.getEffectiveName()))
+                    .setAuthor(requester.getEffectiveName())
+                    .addField("Reputation", Integer.toString(0), false);
+        } else {
+            event.reply("Failed to fetch requested member.").queue();
+            return false;
+        }
 
         List<DatabaseModel> questionModels =
                 ModelDao.retrieveModelsByField("questions", "authorId", requestedId);

@@ -2,6 +2,8 @@ package panda.reppy.flags;
 
 import net.dv8tion.jda.api.entities.Member;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class CommandCondition {
 
     /**
@@ -33,7 +35,14 @@ public class CommandCondition {
             return member.getId().equals(snowflake);
         }
         if (snowflakeType == SnowflakeType.ROLE_ID) {
-            return member.getRoles().contains(snowflake);
+            AtomicBoolean hasRole = new AtomicBoolean(false);
+            member.getRoles().forEach(role -> {
+                if (role.getId().equals(snowflake)) {
+                    hasRole.set(true);
+                }
+            });
+
+            return hasRole.get();
         }
 
         // TODO Implement permission check

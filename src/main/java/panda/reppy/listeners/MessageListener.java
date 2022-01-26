@@ -27,9 +27,7 @@ public class MessageListener extends ListenerAdapter {
 
             if (authorId.equals(SnowflakeConstants.BOT_OWNER_ID)) {
                 if (messageContent.equals("r!stop")) {
-                    event.getMessage().reply("Shutting down safely.").queue(success -> {
-                        event.getJDA().shutdown();
-                    });
+                    event.getMessage().reply("Shutting down safely.").queue(success -> event.getJDA().shutdown());
                 }
             }
         }
