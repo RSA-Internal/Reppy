@@ -6,7 +6,7 @@ plugins {
 
 mainClassName = 'panda.reppy.Start'
 version '1.0'
-sourceCompatibility = 1.8
+sourceCompatibility = 1.16
 
 repositories {
     maven {
