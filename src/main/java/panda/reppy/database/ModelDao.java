@@ -4,6 +4,7 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.result.UpdateResult;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.ThreadChannel;
 import org.bson.types.ObjectId;
 import panda.reppy.database.models.DatabaseModel;
@@ -19,7 +20,6 @@ public class ModelDao {
 
     public ModelDao() {}
 
-    /** Will always hit DB */
     public static List<DatabaseModel> retrieveModelsByField(final String collectionName,
                                          final String fieldName,
                                          final String fieldValue) {
@@ -34,6 +34,20 @@ public class ModelDao {
         models.forEach(toReturn::add);
 
         return toReturn;
+    }
+
+    public static DatabaseModel retrieveQuestionModel(final String threadId) {
+        MongoDatabase db = BotMongoClient.getDatabase("reppy");
+        MongoCollection<DatabaseModel> collection = BotMongoClient.getCollectionByName(db, "questions");
+
+        return collection.find(eq("threadId", threadId)).first();
+    }
+
+    public static DatabaseModel retrieveAnswerModel(final String threadId, final String postId) {
+        MongoDatabase db = BotMongoClient.getDatabase("reppy");
+        MongoCollection<DatabaseModel> collection = BotMongoClient.getCollectionByName(db, "answers");
+
+        return collection.find(eq("postId", postId)).first();
     }
 
     private static void saveModelData(final DatabaseModel model) {
@@ -53,6 +67,10 @@ public class ModelDao {
         }
     }
 
+    public static void updateModelData(final DatabaseModel model) {
+        saveModelData(model);
+    }
+
     public static void generateQuestionModel(ThreadChannel threadChannel, QuestionBuilder questionBuilder) {
         DatabaseModel newQuestion = new DatabaseModel();
         newQuestion.setCollectionName("questions");
@@ -62,5 +80,30 @@ public class ModelDao {
         newQuestion.setThreadId(threadChannel.getId());
 
         saveModelData(newQuestion);
+    }
+
+    public static void generateAnswerModel(ThreadChannel threadChannel, Member author, String postId, boolean isAccepted) {
+        DatabaseModel answerModel = new DatabaseModel();
+        answerModel.setCollectionName("answers");
+        answerModel.setThreadId(threadChannel.getId());
+        answerModel.setAuthorId(author.getId());
+        answerModel.setAccepted(isAccepted);
+        answerModel.setPostId(postId);
+
+        saveModelData(answerModel);
+    }
+
+    public static void generateVoteModel(String threadChannelId,
+                                         String postId, String authorId, String receiverId,
+                                         boolean upvote) {
+        DatabaseModel voteModel = new DatabaseModel();
+        voteModel.setCollectionName("votes");
+        voteModel.setThreadId(threadChannelId);
+        voteModel.setPostId(postId);
+        voteModel.setAuthorId(authorId);
+        voteModel.setReceiverId(receiverId);
+        voteModel.setVoteType(upvote);
+
+        saveModelData(voteModel);
     }
 }

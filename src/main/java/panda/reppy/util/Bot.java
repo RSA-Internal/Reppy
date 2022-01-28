@@ -12,6 +12,7 @@ import panda.reppy.commands.BaseCommand;
 import panda.reppy.commands.slashcommands.*;
 import panda.reppy.entities.BotMongoClient;
 import panda.reppy.entities.MessageWaiter;
+import panda.reppy.listeners.ButtonListener;
 import panda.reppy.listeners.MessageListener;
 import panda.reppy.listeners.SlashCommandListener;
 import panda.reppy.util.constants.SnowflakeConstants;
@@ -52,7 +53,7 @@ public class Bot {
         SlashCommandListener slashCommandListener = new SlashCommandListener();
         initSlashCommands(slashCommandListener);
 
-        builder.addEventListeners(new MessageListener(), slashCommandListener, new MessageWaiter());
+        builder.addEventListeners(new ButtonListener(), new MessageListener(), slashCommandListener, new MessageWaiter());
     }
 
     private static void configureMemoryUsage(JDABuilder builder) {
@@ -83,7 +84,7 @@ public class Bot {
 
     private static void initSlashCommands(SlashCommandListener listener) {
         // Member Specific Commands
-        listener.initCommands(new Ping(), new PostQuestion(), new StatsCommand());
+        listener.initCommands(new ConvertAnswer(), new Ping(), new PostQuestion(), new StatsCommand());
 
         // Admin Specific Commands
 
