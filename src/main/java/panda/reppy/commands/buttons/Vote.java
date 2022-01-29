@@ -2,9 +2,9 @@ package panda.reppy.commands.buttons;
 
 import net.dv8tion.jda.api.events.interaction.ButtonClickEvent;
 
-public class Upvote {
+public class Vote {
 
-    public static void process(ButtonClickEvent event) {
+    public static void process(ButtonClickEvent event, boolean upvote) {
 //        if (!actorId.equals(authorId)) {
 //            ModelDao.generateVoteModel(event.getChannel().getId(), answerModel.getPostId(), actorId,
 //                    authorId, true);

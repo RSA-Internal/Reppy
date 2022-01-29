@@ -3,8 +3,7 @@ package panda.reppy.listeners;
 import net.dv8tion.jda.api.events.interaction.ButtonClickEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import panda.reppy.commands.buttons.Accept;
-import panda.reppy.commands.buttons.Downvote;
-import panda.reppy.commands.buttons.Upvote;
+import panda.reppy.commands.buttons.Vote;
 
 public class ButtonListener extends ListenerAdapter {
 
@@ -13,8 +12,8 @@ public class ButtonListener extends ListenerAdapter {
         String buttonId = event.getComponentId();
 
         switch (buttonId) {
-            case "upvote" -> Upvote.process(event);
-            case "downvote" -> Downvote.process(event);
+            case "upvote" -> Vote.process(event, true);
+            case "downvote" -> Vote.process(event, false);
             case "accept" -> Accept.process(event);
             default -> event.reply("Invalid buttonId received.").setEphemeral(true).queue();
         }

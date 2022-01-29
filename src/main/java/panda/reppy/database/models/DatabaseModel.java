@@ -16,6 +16,7 @@ public class DatabaseModel {
 
     // Question Model
     private String title;
+    private Boolean isAnswered;
 
     // Vote Model
     private Boolean voteType;
@@ -68,6 +69,14 @@ public class DatabaseModel {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public Boolean getIsAnswered() {
+        return isAnswered;
+    }
+
+    public void setIsAnswered(Boolean isAnswered) {
+        this.isAnswered = isAnswered;
     }
 
     public Boolean getVoteType() {
